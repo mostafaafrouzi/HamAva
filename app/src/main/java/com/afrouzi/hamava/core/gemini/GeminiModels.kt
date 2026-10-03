@@ -28,8 +28,16 @@ data class GeminiGenerationConfig(
     @SerializedName("responseModalities")
     val responseModalities: List<String> = listOf("AUDIO"),
     @SerializedName("speechConfig")
-    val speechConfig: GeminiSpeechConfig
+    val speechConfig: GeminiSpeechConfig,
+    @SerializedName("translationConfig")
+    val translationConfig: GeminiTranslationConfig? = null
 )
+
+data class GeminiTranslationConfig(
+    @SerializedName("targetLanguageCode")
+    val targetLanguageCode: String
+)
+
 
 data class GeminiSpeechConfig(
     @SerializedName("voiceConfig")

@@ -237,6 +237,9 @@ class GeminiLiveSession(
                                 voiceName = settings.voice.id
                             )
                         )
+                    ),
+                    translationConfig = GeminiTranslationConfig(
+                        targetLanguageCode = settings.targetLanguage.code
                     )
                 ),
                 systemInstruction = GeminiSystemInstruction(

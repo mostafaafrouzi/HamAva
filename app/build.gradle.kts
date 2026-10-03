@@ -22,8 +22,8 @@ android {
         applicationId = "com.afrouzi.hamava"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
         val defaultApiKey = keystoreProperties.getProperty("geminiApiKey", System.getenv("GEMINI_API_KEY") ?: "")
         buildConfigField("String", "DEFAULT_GEMINI_API_KEY", "\"$defaultApiKey\"")
     }

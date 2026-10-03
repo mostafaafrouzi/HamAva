@@ -20,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.afrouzi.hamava.data.model.GeminiVoice
 import com.afrouzi.hamava.ui.theme.DarkSurfaceVariant
 import com.afrouzi.hamava.ui.theme.TealActive
@@ -31,6 +33,7 @@ fun VoiceSelectorRow(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     Row(
         modifier = modifier
@@ -46,7 +49,7 @@ fun VoiceSelectorRow(
                 onClick = { onVoiceSelected(voice) },
                 label = {
                     Text(
-                        text = voice.displayName,
+                        text = if (isRtl) voice.nameFa else voice.displayName,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                     )
                 },

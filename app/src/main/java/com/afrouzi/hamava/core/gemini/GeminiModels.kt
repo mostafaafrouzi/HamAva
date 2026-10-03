@@ -18,31 +18,31 @@ data class GeminiLiveSetupMessage(
 data class GeminiSetupConfig(
     @SerializedName("model")
     val model: String,
-    @SerializedName("generation_config")
+    @SerializedName("generationConfig")
     val generationConfig: GeminiGenerationConfig,
-    @SerializedName("system_instruction")
+    @SerializedName("systemInstruction")
     val systemInstruction: GeminiSystemInstruction
 )
 
 data class GeminiGenerationConfig(
-    @SerializedName("response_modalities")
+    @SerializedName("responseModalities")
     val responseModalities: List<String> = listOf("AUDIO"),
-    @SerializedName("speech_config")
+    @SerializedName("speechConfig")
     val speechConfig: GeminiSpeechConfig
 )
 
 data class GeminiSpeechConfig(
-    @SerializedName("voice_config")
+    @SerializedName("voiceConfig")
     val voiceConfig: GeminiVoiceConfig
 )
 
 data class GeminiVoiceConfig(
-    @SerializedName("prebuilt_voice_config")
+    @SerializedName("prebuiltVoiceConfig")
     val prebuiltVoiceConfig: GeminiPrebuiltVoiceConfig
 )
 
 data class GeminiPrebuiltVoiceConfig(
-    @SerializedName("voice_name")
+    @SerializedName("voiceName")
     val voiceName: String
 )
 
@@ -59,17 +59,17 @@ data class GeminiPartText(
 // --- Client Realtime Input Message ---
 
 data class GeminiRealtimeInputMessage(
-    @SerializedName("realtime_input")
+    @SerializedName("realtimeInput")
     val realtimeInput: GeminiRealtimeInput
 )
 
 data class GeminiRealtimeInput(
-    @SerializedName("media_chunks")
+    @SerializedName("mediaChunks")
     val mediaChunks: List<GeminiMediaChunk>
 )
 
 data class GeminiMediaChunk(
-    @SerializedName("mime_type")
+    @SerializedName("mimeType")
     val mimeType: String = "audio/pcm;rate=16000",
     @SerializedName("data")
     val data: String // Base64 PCM
@@ -78,6 +78,8 @@ data class GeminiMediaChunk(
 // --- Server Incoming Messages ---
 
 data class GeminiServerMessage(
+    @SerializedName("setupComplete")
+    val setupComplete: Any? = null,
     @SerializedName("serverContent")
     val serverContent: GeminiServerContent? = null,
     @SerializedName("toolCall")

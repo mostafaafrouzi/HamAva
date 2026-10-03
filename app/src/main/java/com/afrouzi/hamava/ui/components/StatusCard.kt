@@ -108,7 +108,7 @@ fun StatusCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "${if (settings.audioSource == AudioSourceType.MIC) stringResource(R.string.source_mic) else stringResource(R.string.source_system)} ➔ ${settings.targetLanguage.nameFa}",
+                        text = "${if (settings.audioSource == AudioSourceType.MIC) stringResource(R.string.source_mic) else stringResource(R.string.source_system)} ➔ ${if (settings.appLanguage == "fa") settings.targetLanguage.nameFa else settings.targetLanguage.nameEn}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

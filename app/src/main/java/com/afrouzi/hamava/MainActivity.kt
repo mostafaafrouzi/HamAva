@@ -19,9 +19,16 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.content.ContextCompat
@@ -30,6 +37,7 @@ import com.afrouzi.hamava.service.DubForegroundService
 import com.afrouzi.hamava.ui.navigation.HamAvaNavHost
 import com.afrouzi.hamava.ui.theme.HamAvaTheme
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -46,16 +54,25 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            val mediaProjection = mediaProjectionManager.getMediaProjection(
-                result.resultCode,
-                result.data!!
-            )
-            DubForegroundService.activeMediaProjection = mediaProjection
             val intent = Intent(this, DubForegroundService::class.java).apply {
                 action = DubForegroundService.ACTION_START
+                putExtra(DubForegroundService.EXTRA_RESULT_CODE, result.resultCode)
+                putExtra(DubForegroundService.EXTRA_RESULT_DATA, result.data)
             }
             ContextCompat.startForegroundService(this, intent)
         }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        val prefs = newBase.getSharedPreferences("hamava_general_prefs", Context.MODE_PRIVATE)
+        val lang = prefs.getString("app_language", "fa") ?: "fa"
+        val locale = if (lang == "fa") Locale("fa") else Locale.ENGLISH
+        Locale.setDefault(locale)
+        val config = Configuration(newBase.resources.configuration).apply {
+            setLocale(locale)
+            setLayoutDirection(locale)
+        }
+        super.attachBaseContext(newBase.createConfigurationContext(config))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,16 +88,26 @@ class MainActivity : ComponentActivity() {
                 initial = settingsRepository.getSettingsSnapshot()
             )
 
+            var currentLanguage by remember { mutableStateOf(settings.appLanguage) }
+            LaunchedEffect(settings.appLanguage) {
+                if (currentLanguage != settings.appLanguage) {
+                    currentLanguage = settings.appLanguage
+                    recreate()
+                }
+            }
+
             val isDarkTheme = when (settings.appTheme) {
                 "light" -> false
                 "dark" -> true
                 else -> true // Dark default
             }
 
-            val isRtl = settings.appLanguage == "fa"
-            val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
+            val isPersian = settings.appLanguage == "fa"
+            val layoutDirection = if (isPersian) LayoutDirection.Rtl else LayoutDirection.Ltr
 
-            CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+            CompositionLocalProvider(
+                LocalLayoutDirection provides layoutDirection
+            ) {
                 HamAvaTheme(darkTheme = isDarkTheme) {
                     Surface(
                         modifier = Modifier.fillMaxSize()

@@ -14,15 +14,16 @@ enum class AudioSourceType {
 data class GeminiVoice(
     val id: String,
     val displayName: String,
-    val description: String
+    val description: String,
+    val nameFa: String = displayName
 ) {
     companion object {
-        val AOEDE = GeminiVoice("Aoede", "Aoede", "Clear, natural, warm (Female)")
-        val CHARON = GeminiVoice("Charon", "Charon", "Deep, resonant, calm (Male)")
-        val FENRIR = GeminiVoice("Fenrir", "Fenrir", "Strong, authorative (Male)")
-        val KORE = GeminiVoice("Kore", "Kore", "Friendly, energetic (Female)")
-        val PUCK = GeminiVoice("Puck", "Puck", "Playful, lively (Male)")
-        val ZEPHYR = GeminiVoice("Zephyr", "Zephyr", "Gentle, balanced (Neutral)")
+        val AOEDE = GeminiVoice("Aoede", "Aoede", "Clear, natural, warm (Female)", "آئوده (زن)")
+        val CHARON = GeminiVoice("Charon", "Charon", "Deep, resonant, calm (Male)", "شارون (مرد)")
+        val FENRIR = GeminiVoice("Fenrir", "Fenrir", "Strong, authorative (Male)", "فنریر (مرد)")
+        val KORE = GeminiVoice("Kore", "Kore", "Friendly, energetic (Female)", "کوره (زن)")
+        val PUCK = GeminiVoice("Puck", "Puck", "Playful, lively (Male)", "پوک (مرد)")
+        val ZEPHYR = GeminiVoice("Zephyr", "Zephyr", "Gentle, balanced (Neutral)", "زفیر (خنثی)")
 
         val ALL_VOICES = listOf(AOEDE, CHARON, FENRIR, KORE, PUCK, ZEPHYR)
 
@@ -33,12 +34,13 @@ data class GeminiVoice(
 }
 
 object GeminiConstants {
-    const val DEFAULT_MODEL = "models/gemini-3.5-live-translate-preview"
-    const val FALLBACK_MODEL = "models/gemini-2.5-flash"
+    const val DEFAULT_MODEL = "models/gemini-2.0-flash-realtime-exp"
+    const val FALLBACK_MODEL = "models/gemini-2.0-flash"
 
     val AVAILABLE_MODELS = listOf(
-        DEFAULT_MODEL to "Gemini 3.5 Live Translate (Ultra Low-Latency)",
-        FALLBACK_MODEL to "Gemini 2.5 Flash"
+        DEFAULT_MODEL to "Gemini 2.0 Flash Realtime (پیشنهادی)",
+        FALLBACK_MODEL to "Gemini 2.0 Flash",
+        "models/gemini-2.0-flash-exp" to "Gemini 2.0 Flash Exp (v1alpha)"
     )
 
     const val LIVE_API_WS_URL =

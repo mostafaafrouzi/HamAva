@@ -7,6 +7,7 @@
 package com.afrouzi.hamava.core.gemini
 
 import android.os.SystemClock
+import android.util.Log
 import com.afrouzi.hamava.data.model.DubError
 import com.afrouzi.hamava.data.model.DubSettings
 import com.afrouzi.hamava.data.model.DubStatus
@@ -17,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -47,35 +49,96 @@ class GeminiLiveSession(
 
     private var webSocket: WebSocket? = null
     private val isConnected = AtomicBoolean(false)
+    private val isSetupComplete = AtomicBoolean(false)
     private val isManuallyClosed = AtomicBoolean(false)
     private val reconnectAttempts = AtomicInteger(0)
+    private val fallbackAttempts = AtomicInteger(0)
 
     private var sessionScope = CoroutineScope(Dispatchers.IO + Job())
     private var lastSendTimestamp = 0L
+    private var effectiveModel: String = settings.model
+    private var effectiveWsUrl: String = GeminiConstants.LIVE_API_WS_URL
 
     fun connect() {
         if (settings.apiKey.isBlank()) {
+            Log.e(TAG, "API key is blank, cannot connect")
             onError(DubError.ApiKeyMissing)
             return
         }
 
         isManuallyClosed.set(false)
+        isSetupComplete.set(false)
         onStatusChanged(DubStatus.CONNECTING)
 
-        val wsUrl = "${GeminiConstants.LIVE_API_WS_URL}?key=${settings.apiKey}"
+        sessionScope.launch {
+            resolveModelAndConnect()
+        }
+    }
+
+    private suspend fun resolveModelAndConnect() = withContext(Dispatchers.IO) {
+        val (bidiBeta, bidiAlpha) = fetchBidiModels()
+        Log.d(TAG, "Discovered v1beta Bidi models: $bidiBeta, v1alpha Bidi models: $bidiAlpha")
+
+        var selectedModel = settings.model
+        var selectedWsUrl = GeminiConstants.LIVE_API_WS_URL
+
+        if (bidiBeta.isNotEmpty()) {
+            selectedWsUrl = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+            selectedModel = if (bidiBeta.contains(settings.model)) {
+                settings.model
+            } else {
+                bidiBeta.firstOrNull { it.contains("2.0-flash") }
+                    ?: bidiBeta.firstOrNull { it.contains("flash") }
+                    ?: bidiBeta.first()
+            }
+        } else if (bidiAlpha.isNotEmpty()) {
+            selectedWsUrl = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent"
+            selectedModel = if (bidiAlpha.contains(settings.model)) {
+                settings.model
+            } else {
+                bidiAlpha.firstOrNull { it.contains("2.0-flash") }
+                    ?: bidiAlpha.firstOrNull { it.contains("flash") }
+                    ?: bidiAlpha.first()
+            }
+        }
+
+        effectiveModel = selectedModel
+        effectiveWsUrl = selectedWsUrl
+        Log.d(TAG, "Selected Gemini model: $effectiveModel via $effectiveWsUrl")
+        connectDirectly()
+    }
+
+    private fun connectDirectly() {
+        val wsUrl = "$effectiveWsUrl?key=${settings.apiKey}"
         val request = Request.Builder()
             .url(wsUrl)
             .build()
 
-        webSocket = client.newWebSocket(request, object : WebSocketListener() {
+        webSocket = client.newWebSocket(request, createWebSocketListener())
+    }
+
+    private fun createWebSocketListener(): WebSocketListener {
+        return object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                Log.d(TAG, "WebSocket connected successfully! Sending setup message...")
                 isConnected.set(true)
                 reconnectAttempts.set(0)
+                fallbackAttempts.set(0)
                 sendSetupMessage(webSocket)
-                onStatusChanged(DubStatus.ACTIVE_LISTENING)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (text.contains("\"setupComplete\"")) {
+                    Log.d(TAG, "SetupComplete received from Gemini Live API! Ready to stream audio.")
+                    isSetupComplete.set(true)
+                    onStatusChanged(DubStatus.ACTIVE_LISTENING)
+                    return
+                }
+
+                if (text.contains("\"error\"")) {
+                    Log.e(TAG, "Gemini Live API returned error frame: $text")
+                }
+
                 val chunks = chunkProcessor.extractAudioFromResponse(text)
                 if (chunks.isNotEmpty()) {
                     if (lastSendTimestamp > 0) {
@@ -90,21 +153,32 @@ class GeminiLiveSession(
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "WebSocket onClosing: code=$code, reason=$reason")
                 webSocket.close(code, reason)
                 isConnected.set(false)
+                isSetupComplete.set(false)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "WebSocket onClosed: code=$code, reason=$reason")
                 isConnected.set(false)
+                isSetupComplete.set(false)
                 if (!isManuallyClosed.get()) {
-                    handleReconnection()
+                    if (code == 1008) {
+                        Log.e(TAG, "Google closed session with 1008: $reason")
+                        handleModelFallback(reason)
+                    } else {
+                        handleReconnection()
+                    }
                 } else {
                     onStatusChanged(DubStatus.IDLE)
                 }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                Log.e(TAG, "WebSocket onFailure: ${t.localizedMessage}, responseCode=${response?.code}", t)
                 isConnected.set(false)
+                isSetupComplete.set(false)
                 if (!isManuallyClosed.get()) {
                     val code = response?.code ?: 0
                     if (code == 400 || code == 403) {
@@ -117,7 +191,82 @@ class GeminiLiveSession(
                     onStatusChanged(DubStatus.IDLE)
                 }
             }
-        })
+        }
+    }
+
+    private fun handleModelFallback(reason: String) {
+        val attempt = fallbackAttempts.incrementAndGet()
+        val candidates = listOf(
+            "models/gemini-2.0-flash-realtime-exp",
+            "models/gemini-2.0-flash",
+            "models/gemini-2.5-flash",
+            "models/gemini-2.0-flash-exp"
+        )
+        if (attempt <= candidates.size * 2) {
+            val nextModel = candidates[(attempt - 1) % candidates.size]
+            val useAlpha = (attempt > candidates.size)
+            effectiveModel = nextModel
+            effectiveWsUrl = if (useAlpha) {
+                "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent"
+            } else {
+                "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+            }
+            Log.d(TAG, "Fallback attempt #$attempt: trying model $effectiveModel on $effectiveWsUrl")
+            sessionScope.launch {
+                delay(800)
+                if (!isManuallyClosed.get()) {
+                    connectDirectly()
+                }
+            }
+        } else {
+            Log.e(TAG, "All fallback models exhausted for Live API: $reason")
+            onError(DubError.NetworkError("Gemini Live API: $reason"))
+            onStatusChanged(DubStatus.ERROR)
+        }
+    }
+
+    private fun fetchBidiModels(): Pair<List<String>, List<String>> {
+        val betaModels = queryBidiList("https://generativelanguage.googleapis.com/v1beta/models?key=${settings.apiKey}")
+        val alphaModels = if (betaModels.isEmpty()) {
+            queryBidiList("https://generativelanguage.googleapis.com/v1alpha/models?key=${settings.apiKey}")
+        } else {
+            emptyList()
+        }
+        return Pair(betaModels, alphaModels)
+    }
+
+    private fun queryBidiList(url: String): List<String> {
+        val list = mutableListOf<String>()
+        try {
+            val req = Request.Builder().url(url).build()
+            client.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val body = resp.body?.string().orEmpty()
+                    val json = org.json.JSONObject(body)
+                    val modelsArray = json.optJSONArray("models")
+                    if (modelsArray != null) {
+                        for (i in 0 until modelsArray.length()) {
+                            val modelObj = modelsArray.getJSONObject(i)
+                            val name = modelObj.optString("name")
+                            val methods = modelObj.optJSONArray("supportedGenerationMethods")
+                            if (methods != null) {
+                                for (j in 0 until methods.length()) {
+                                    if (methods.getString(j).equals("bidiGenerateContent", ignoreCase = true)) {
+                                        list.add(name)
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Log.w(TAG, "queryBidiList ($url) returned code ${resp.code}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "queryBidiList exception: ${e.localizedMessage}")
+        }
+        return list
     }
 
     private fun sendSetupMessage(ws: WebSocket) {
@@ -129,7 +278,7 @@ class GeminiLiveSession(
 
         val setupMsg = GeminiLiveSetupMessage(
             setup = GeminiSetupConfig(
-                model = settings.model,
+                model = effectiveModel,
                 generationConfig = GeminiGenerationConfig(
                     responseModalities = listOf("AUDIO"),
                     speechConfig = GeminiSpeechConfig(
@@ -146,18 +295,19 @@ class GeminiLiveSession(
             )
         )
         val json = gson.toJson(setupMsg)
+        Log.d(TAG, "Sending setup frame: $json")
         ws.send(json)
     }
 
     fun sendAudioChunk(pcmData: ByteArray, length: Int) {
-        if (!isConnected.get() || webSocket == null || length <= 0) return
+        if (!isConnected.get() || !isSetupComplete.get() || webSocket == null || length <= 0) return
 
         try {
             val json = chunkProcessor.buildRealtimeInputJson(pcmData, length)
             lastSendTimestamp = SystemClock.elapsedRealtime()
             webSocket?.send(json)
         } catch (e: Exception) {
-            // Buffer overflow or socket error
+            Log.w(TAG, "Failed to send audio chunk: ${e.localizedMessage}")
         }
     }
 
@@ -166,6 +316,7 @@ class GeminiLiveSession(
         if (attempts <= MAX_RECONNECT_ATTEMPTS) {
             onStatusChanged(DubStatus.CONNECTING)
             val backoffMillis = (1000L * (1 shl (attempts - 1))).coerceAtMost(30000L)
+            Log.d(TAG, "Scheduling reconnection attempt #$attempts in ${backoffMillis}ms")
             sessionScope.launch {
                 delay(backoffMillis)
                 if (!isManuallyClosed.get()) {
@@ -173,14 +324,17 @@ class GeminiLiveSession(
                 }
             }
         } else {
+            Log.e(TAG, "Exceeded max reconnect attempts: $lastErrorMsg")
             onError(DubError.NetworkError("Failed to reconnect after $MAX_RECONNECT_ATTEMPTS attempts. $lastErrorMsg"))
             onStatusChanged(DubStatus.ERROR)
         }
     }
 
     fun disconnect() {
+        Log.d(TAG, "Disconnecting Gemini Live session")
         isManuallyClosed.set(true)
         isConnected.set(false)
+        isSetupComplete.set(false)
         try {
             webSocket?.close(1000, "User stopped dubbing session")
         } catch (e: Exception) {
@@ -191,6 +345,7 @@ class GeminiLiveSession(
     }
 
     companion object {
+        private const val TAG = "HamAva"
         private const val MAX_RECONNECT_ATTEMPTS = 5
     }
 }

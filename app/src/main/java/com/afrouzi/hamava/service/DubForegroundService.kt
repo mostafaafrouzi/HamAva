@@ -6,6 +6,7 @@
 
 package com.afrouzi.hamava.service
 
+import android.app.Activity
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -14,10 +15,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.IBinder
 import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import java.util.Locale
 import com.afrouzi.hamava.HamAvaApplication
 import com.afrouzi.hamava.MainActivity
 import com.afrouzi.hamava.R
@@ -64,7 +70,14 @@ class DubForegroundService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 val settings = settingsRepository.getSettingsSnapshot()
-                startDubbingSession(settings)
+                val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
+                val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                }
+                startDubbingSession(settings, resultCode, resultData)
             }
             ACTION_STOP -> {
                 stopDubbingSession()
@@ -83,13 +96,20 @@ class DubForegroundService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startDubbingSession(settings: DubSettings) {
+    private fun startDubbingSession(
+        settings: DubSettings,
+        resultCode: Int = Activity.RESULT_CANCELED,
+        resultData: Intent? = null
+    ) {
         wakeLock?.acquire(3 * 60 * 60 * 1000L) // Max 3 hours safeguard
 
+        val res = getLocalizedResources(settings)
+        val targetLangName = if (settings.appLanguage == "fa") settings.targetLanguage.nameFa else settings.targetLanguage.nameEn
         val notification = createNotification(
-            statusText = getString(R.string.status_connecting),
-            targetLang = settings.targetLanguage.nameFa,
-            source = if (settings.audioSource == AudioSourceType.MIC) getString(R.string.source_mic) else getString(R.string.source_system)
+            settings = settings,
+            statusText = res.getString(R.string.status_connecting),
+            targetLang = targetLangName,
+            source = if (settings.audioSource == AudioSourceType.MIC) res.getString(R.string.source_mic) else res.getString(R.string.source_system)
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -106,12 +126,53 @@ class DubForegroundService : Service() {
         }
 
         _isServiceRunning.value = true
+        Log.d("HamAva", "startDubbingSession: source=${settings.audioSource}, targetLang=${settings.targetLanguage.code}, voice=${settings.voice.id}, model=${settings.model}")
+
+        // On Android 10+ (Q+), instantiate MediaProjection AFTER startForeground with MEDIA_PROJECTION type
+        if (settings.audioSource == AudioSourceType.SYSTEM) {
+            if (resultCode == Activity.RESULT_OK && resultData != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                        val projection = projectionManager.getMediaProjection(resultCode, resultData)
+                        Log.d("HamAva", "MediaProjection successfully acquired!")
+                        projection.registerCallback(object : MediaProjection.Callback() {
+                            override fun onStop() {
+                                super.onStop()
+                                Log.d("HamAva", "MediaProjection.Callback onStop triggered")
+                                activeMediaProjection = null
+                                stopDubbingSession()
+                                stopSelf()
+                            }
+                        }, null)
+                        activeMediaProjection = projection
+                    } catch (e: Exception) {
+                        Log.e("HamAva", "MediaProjection retrieval failed: ${e.localizedMessage}", e)
+                        serviceScope.launch {
+                            _errorFlow.emit(DubError.MediaProjectionError("Media projection failed: ${e.localizedMessage}"))
+                        }
+                        stopDubbingSession()
+                        stopSelf()
+                        return
+                    }
+                }
+            } else if (activeMediaProjection == null) {
+                Log.e("HamAva", "MediaProjection permission required but not provided!")
+                serviceScope.launch {
+                    _errorFlow.emit(DubError.MediaProjectionError("Media projection permission is required"))
+                }
+                stopDubbingSession()
+                stopSelf()
+                return
+            }
+        }
 
         audioPipeline?.stop()
-        audioPipeline = AudioPipeline(settings, activeMediaProjection)
+        audioPipeline = AudioPipeline(settings, activeMediaProjection, applicationContext)
 
         serviceScope.launch {
             audioPipeline?.status?.collect { status ->
+                Log.d("HamAva", "DubStatus updated: $status")
                 _statusFlow.value = status
                 updateNotificationForStatus(status, settings)
             }
@@ -137,6 +198,7 @@ class DubForegroundService : Service() {
 
         serviceScope.launch {
             audioPipeline?.errors?.collect { error ->
+                Log.e("HamAva", "AudioPipeline error received: ${error.getUserMessage(false)}")
                 _errorFlow.emit(error)
             }
         }
@@ -144,49 +206,69 @@ class DubForegroundService : Service() {
         audioPipeline?.start()
     }
 
-    private fun updateNotificationForStatus(status: DubStatus, settings: DubSettings) {
-        val statusText = when (status) {
-            DubStatus.CONNECTING -> getString(R.string.status_connecting)
-            DubStatus.ACTIVE_LISTENING -> getString(R.string.status_listening)
-            DubStatus.ACTIVE_SPEAKING -> getString(R.string.status_speaking)
-            DubStatus.ERROR -> getString(R.string.status_error)
-            DubStatus.PAUSED -> getString(R.string.status_paused)
-            DubStatus.IDLE -> getString(R.string.status_ready)
-        }
-
-        val notification = createNotification(
-            statusText = statusText,
-            targetLang = settings.targetLanguage.nameFa,
-            source = if (settings.audioSource == AudioSourceType.MIC) getString(R.string.source_mic) else getString(R.string.source_system)
-        )
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager?.notify(HamAvaApplication.NOTIFICATION_ID, notification)
-    }
-
     private fun stopDubbingSession() {
+        Log.d("HamAva", "stopDubbingSession called")
         audioPipeline?.stop()
         audioPipeline = null
-        _isServiceRunning.value = false
-        _statusFlow.value = DubStatus.IDLE
-        _inputRmsFlow.value = 0f
-        _outputRmsFlow.value = 0f
+        try {
+            activeMediaProjection?.stop()
+        } catch (e: Exception) {
+            // Ignore
+        }
+        activeMediaProjection = null
 
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
         }
+        _isServiceRunning.value = false
+        _statusFlow.value = DubStatus.IDLE
+        _inputRmsFlow.value = 0f
+        _outputRmsFlow.value = 0f
+        _latencyFlow.value = 0L
 
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
-    private fun createNotification(statusText: String, targetLang: String, source: String): Notification {
-        val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    private fun getLocalizedResources(settings: DubSettings): Resources {
+        val locale = if (settings.appLanguage == "fa") Locale("fa") else Locale.ENGLISH
+        val config = Configuration(resources.configuration).apply {
+            setLocale(locale)
         }
-        val openAppPendingIntent = PendingIntent.getActivity(
+        return createConfigurationContext(config).resources
+    }
+
+    private fun updateNotificationForStatus(status: DubStatus, settings: DubSettings) {
+        val res = getLocalizedResources(settings)
+        val statusText = when (status) {
+            DubStatus.IDLE -> res.getString(R.string.status_ready)
+            DubStatus.CONNECTING -> res.getString(R.string.status_connecting)
+            DubStatus.ACTIVE_LISTENING -> res.getString(R.string.status_listening)
+            DubStatus.ACTIVE_SPEAKING -> res.getString(R.string.status_speaking)
+            DubStatus.ERROR -> res.getString(R.string.status_error)
+            else -> res.getString(R.string.status_ready)
+        }
+        val source = if (settings.audioSource == AudioSourceType.MIC) res.getString(R.string.source_mic) else res.getString(R.string.source_system)
+        val targetLangName = if (settings.appLanguage == "fa") settings.targetLanguage.nameFa else settings.targetLanguage.nameEn
+        val notification = createNotification(settings, statusText, targetLangName, source)
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(HamAvaApplication.NOTIFICATION_ID, notification)
+    }
+
+    private fun createNotification(
+        settings: DubSettings,
+        statusText: String,
+        targetLang: String,
+        source: String
+    ): Notification {
+        val res = getLocalizedResources(settings)
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingOpenApp = PendingIntent.getActivity(
             this,
             0,
             openAppIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val stopIntent = Intent(this, DubForegroundService::class.java).apply {
@@ -196,20 +278,21 @@ class DubForegroundService : Service() {
             this,
             1,
             stopIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val contentText = "$statusText • $source ➔ $targetLang"
+        val title = res.getString(R.string.app_name)
+        val content = "$statusText | $source -> $targetLang"
 
         return NotificationCompat.Builder(this, HamAvaApplication.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_tile_mic)
-            .setContentTitle(getString(R.string.notification_title_active))
-            .setContentText(contentText)
-            .setContentIntent(openAppPendingIntent)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setSmallIcon(R.drawable.ic_mic)
+            .setContentIntent(pendingOpenApp)
             .setOngoing(true)
             .addAction(
                 R.drawable.ic_tile_mic,
-                getString(R.string.action_stop),
+                res.getString(R.string.action_stop),
                 stopPendingIntent
             )
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -226,6 +309,9 @@ class DubForegroundService : Service() {
         const val ACTION_START = "com.afrouzi.hamava.action.START"
         const val ACTION_STOP = "com.afrouzi.hamava.action.STOP"
         const val ACTION_TOGGLE = "com.afrouzi.hamava.action.TOGGLE"
+
+        const val EXTRA_RESULT_CODE = "extra_result_code"
+        const val EXTRA_RESULT_DATA = "extra_result_data"
 
         var activeMediaProjection: MediaProjection? = null
 

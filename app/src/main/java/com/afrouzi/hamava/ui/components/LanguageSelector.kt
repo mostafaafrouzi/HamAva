@@ -38,8 +38,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.afrouzi.hamava.R
@@ -134,15 +136,16 @@ fun LanguageSelectorBottomSheet(
                             modifier = Modifier.padding(end = 12.dp)
                         )
 
+                        val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = lang.nameFa,
+                                text = if (isRtl) lang.nameFa else lang.nameEn,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isSelected) TealActive else MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = lang.nameEn,
+                                text = if (isRtl) lang.nameEn else lang.nameFa,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

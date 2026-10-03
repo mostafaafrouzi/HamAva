@@ -33,6 +33,7 @@
     <string name="api_key_hint">کلید API خود را از گوگل AI Studio وارد کنید</string>
     <string name="api_key_helper">می‌توانید کلید رایگان خود را از Google AI Studio (aistudio.google.com) دریافت نمایید.</string>
     <string name="api_key_get">دریافت کلید API</string>
+    <string name="paste_key">جای‌گذاری از کلیپ‌بورد</string>
     <string name="test_connection">بررسی و تست اتصال</string>
     <string name="testing_connection">در حال بررسی اتصال…</string>
     <string name="connection_success">کلید API معتبر است و ارتباط با موفقیت برقرار شد!</string>

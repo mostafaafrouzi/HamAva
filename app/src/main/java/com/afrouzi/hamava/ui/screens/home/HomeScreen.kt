@@ -8,6 +8,7 @@ package com.afrouzi.hamava.ui.screens.home
 
 import android.Manifest
 import android.os.Build
+import com.afrouzi.hamava.service.DubForegroundService
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -30,9 +31,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Mic
@@ -152,7 +153,7 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "• Live Dub",
+                            text = if (isPersian) "• دوبله زنده" else "• Live Dub",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -259,7 +260,6 @@ fun HomeScreen(
                     selected = uiState.currentSettings.audioSource == AudioSourceType.SYSTEM,
                     onClick = {
                         viewModel.selectAudioSource(AudioSourceType.SYSTEM)
-                        onRequestMediaProjection()
                     },
                     label = { Text(stringResource(R.string.source_system)) },
                     leadingIcon = {
@@ -310,7 +310,11 @@ fun HomeScreen(
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                             Text(
-                                text = "${uiState.currentSettings.targetLanguage.nameFa} (${uiState.currentSettings.targetLanguage.nameEn})",
+                                text = if (isPersian) {
+                                    "${uiState.currentSettings.targetLanguage.nameFa} (${uiState.currentSettings.targetLanguage.nameEn})"
+                                } else {
+                                    "${uiState.currentSettings.targetLanguage.nameEn} (${uiState.currentSettings.targetLanguage.nameFa})"
+                                },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -319,7 +323,7 @@ fun HomeScreen(
                     }
 
                     Icon(
-                        imageVector = Icons.Default.ChevronRight,
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = stringResource(R.string.select_language),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -357,25 +361,56 @@ fun HomeScreen(
             DubButton(
                 status = uiState.status,
                 onClick = {
-                    if (uiState.currentSettings.audioSource == AudioSourceType.SYSTEM) {
-                        onRequestMediaProjection()
+                    val isRunning = uiState.status == DubStatus.ACTIVE_LISTENING ||
+                            uiState.status == DubStatus.ACTIVE_SPEAKING ||
+                            uiState.status == DubStatus.CONNECTING
+                    if (isRunning) {
+                        viewModel.toggleDubbing()
                     } else {
-                        if (PermissionUtils.hasRecordAudioPermission(context)) {
-                            viewModel.toggleDubbing()
+                        if (uiState.currentSettings.audioSource == AudioSourceType.SYSTEM) {
+                            if (DubForegroundService.activeMediaProjection != null) {
+                                viewModel.toggleDubbing()
+                            } else {
+                                onRequestMediaProjection()
+                            }
                         } else {
-                            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            if (PermissionUtils.hasRecordAudioPermission(context)) {
+                                viewModel.toggleDubbing()
+                            } else {
+                                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
                         }
                     }
                 }
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Dubbing Volume Slider
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isPersian) "میزان صدای دوبله" else "Dubbing Volume",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${(uiState.currentSettings.dubVolumeRatio * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TealActive
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(

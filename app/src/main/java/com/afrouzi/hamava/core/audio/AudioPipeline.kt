@@ -6,8 +6,10 @@
 
 package com.afrouzi.hamava.core.audio
 
+import android.content.Context
 import android.media.projection.MediaProjection
 import android.os.Build
+import android.util.Log
 import com.afrouzi.hamava.core.gemini.GeminiLiveSession
 import com.afrouzi.hamava.data.model.AudioSourceType
 import com.afrouzi.hamava.data.model.DubError
@@ -26,7 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class AudioPipeline(
     private var settings: DubSettings,
-    private val mediaProjection: MediaProjection? = null
+    private val mediaProjection: MediaProjection? = null,
+    private val context: Context? = null
 ) {
 
     private val pipelineScope = CoroutineScope(Dispatchers.IO)
@@ -56,21 +59,27 @@ class AudioPipeline(
     fun start(): Boolean {
         if (isRunning.get()) return true
 
+        Log.d("HamAva", "AudioPipeline starting: source=${settings.audioSource}, targetLang=${settings.targetLanguage.code}")
+
         if (settings.apiKey.isBlank()) {
+            Log.e("HamAva", "AudioPipeline: ApiKey is blank!")
             emitError(DubError.ApiKeyMissing)
             return false
         }
 
         // 1. Initialize Player
         player = AudioPlayer(
+            context = context,
             onOutputRmsCalculated = { rms ->
                 _outputRms.value = rms
             },
             onError = { msg ->
+                Log.e("HamAva", "AudioPlayer error: $msg")
                 emitError(DubError.AudioTrackError(msg))
             }
         )
         if (player?.start() != true) {
+            Log.e("HamAva", "AudioPlayer failed to start!")
             emitError(DubError.AudioTrackError("Playback initialization failed"))
             stop()
             return false
@@ -98,6 +107,7 @@ class AudioPipeline(
         // 3. Initialize Audio Capture (Microphone or System Audio)
         if (settings.audioSource == AudioSourceType.SYSTEM) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && mediaProjection != null) {
+                Log.d("HamAva", "AudioPipeline: Initializing SystemAudioCapture with MediaProjection")
                 systemCapture = SystemAudioCapture(
                     mediaProjection = mediaProjection,
                     onAudioChunkCaptured = { chunk, length, rms ->
@@ -105,6 +115,7 @@ class AudioPipeline(
                         geminiSession?.sendAudioChunk(chunk, length)
                     },
                     onError = { msg ->
+                        Log.e("HamAva", "SystemAudioCapture error: $msg")
                         emitError(DubError.AudioRecordError(msg))
                     }
                 )

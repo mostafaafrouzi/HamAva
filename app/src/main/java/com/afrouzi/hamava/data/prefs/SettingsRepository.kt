@@ -66,7 +66,12 @@ class SettingsRepository @Inject constructor(
         val apiKey = securePrefs.getString(KEY_API_KEY, "") ?: ""
         val targetLangCode = generalPrefs.getString(KEY_TARGET_LANG, "fa") ?: "fa"
         val voiceId = generalPrefs.getString(KEY_VOICE_ID, GeminiVoice.AOEDE.id) ?: GeminiVoice.AOEDE.id
-        val model = generalPrefs.getString(KEY_MODEL, GeminiConstants.DEFAULT_MODEL) ?: GeminiConstants.DEFAULT_MODEL
+        val savedModel = generalPrefs.getString(KEY_MODEL, GeminiConstants.DEFAULT_MODEL) ?: GeminiConstants.DEFAULT_MODEL
+        val model = if (savedModel.contains("3.5") || savedModel.contains("gemini-2.0-flash-exp") || savedModel.isBlank()) {
+            GeminiConstants.DEFAULT_MODEL
+        } else {
+            savedModel
+        }
         val audioSourceStr = generalPrefs.getString(KEY_AUDIO_SOURCE, AudioSourceType.MIC.name) ?: AudioSourceType.MIC.name
         val appTheme = generalPrefs.getString(KEY_APP_THEME, "dark") ?: "dark"
         val appLang = generalPrefs.getString(KEY_APP_LANG, "fa") ?: "fa"

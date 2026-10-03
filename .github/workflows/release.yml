@@ -56,7 +56,7 @@ jobs:
             echo "::error::KEYSTORE_BASE64 secret is not configured in repository."
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > hamava-release.jks
+          echo "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > hamava-release.jks
           cat <<EOF > keystore.properties
           storeFile=hamava-release.jks
           storePassword=${KEYSTORE_PASSWORD}

@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag without v (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
 
 permissions:
   contents: write
@@ -24,13 +30,18 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Extract Tag Version
         id: get_version
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
           echo "Building HamAva release version: ${VERSION}"
 
@@ -93,11 +104,13 @@ jobs:
           APK="release-artifacts/hamava-v${VERSION}.apk"
           
           echo "Verifying APK with apksigner..."
-          ${ANDROID_HOME}/build-tools/35.0.0/apksigner verify --verbose "$APK"
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
+          "$APKSIGNER" verify --verbose "$APK"
 
-      - name: Create GitHub Release
+      - name: Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: "v${{ steps.get_version.outputs.VERSION }}"
           name: "HamAva v${{ steps.get_version.outputs.VERSION }}"
           body_path: .github/release-notes.md
           draft: false

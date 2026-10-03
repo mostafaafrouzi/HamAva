@@ -58,9 +58,6 @@ class GeminiLiveSession(
     private var lastSendTimestamp = 0L
     private var effectiveModel: String = settings.model
     private var effectiveWsUrl: String = GeminiConstants.LIVE_API_WS_URL
-    private var activeSpeechChunkCount = 0
-    private var silenceChunkCount = 0
-    private val speechRmsThreshold = 0.012f
 
     fun connect() {
         if (settings.apiKey.isBlank()) {
@@ -131,9 +128,20 @@ class GeminiLiveSession(
                         onLatencyUpdated(latency)
                     }
                     onStatusChanged(DubStatus.ACTIVE_SPEAKING)
-                    Log.d(TAG, "Received ${chunks.size} audio chunk(s) from Gemini, playing dub audio...")
+                    val totalBytes = chunks.sumOf { it.size }
+                    Log.d(TAG, "Received ${chunks.size} audio chunk(s) from Gemini ($totalBytes bytes), playing dub audio...")
                     for (chunk in chunks) {
                         onAudioReceived(chunk)
+                    }
+                }
+
+                if (text.contains("\"turnComplete\":true")) {
+                    Log.d(TAG, "TurnComplete received from Gemini Live API")
+                    sessionScope.launch {
+                        delay(500)
+                        if (isConnected.get() && isSetupComplete.get()) {
+                            onStatusChanged(DubStatus.ACTIVE_LISTENING)
+                        }
                     }
                 }
             }
@@ -183,9 +191,9 @@ class GeminiLiveSession(
     private fun handleModelFallback(reason: String) {
         val attempt = fallbackAttempts.incrementAndGet()
         val candidates = listOf(
+            "models/gemini-3.5-live-translate-preview",
             "models/gemini-3.8-live",
-            "models/gemini-2.0-flash-realtime-exp",
-            "models/gemini-2.0-flash-exp"
+            "models/gemini-3.1-flash-live-preview"
         )
         if (attempt <= candidates.size * 2) {
             val nextModel = candidates[(attempt - 1) % candidates.size]
@@ -248,34 +256,8 @@ class GeminiLiveSession(
             val json = chunkProcessor.buildRealtimeInputJson(pcmData, length)
             lastSendTimestamp = SystemClock.elapsedRealtime()
             webSocket?.send(json)
-
-            if (rms > speechRmsThreshold) {
-                activeSpeechChunkCount++
-                silenceChunkCount = 0
-                // Continuous speech turn commit after ~2.4s (15 chunks * 160ms)
-                if (activeSpeechChunkCount >= 15) {
-                    commitTurn()
-                }
-            } else {
-                silenceChunkCount++
-                // Speech pause turn commit after ~320ms silence following at least 480ms speech
-                if (activeSpeechChunkCount >= 3 && silenceChunkCount >= 2) {
-                    commitTurn()
-                }
-            }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to send audio chunk: ${e.localizedMessage}")
-        }
-    }
-
-    private fun commitTurn() {
-        activeSpeechChunkCount = 0
-        silenceChunkCount = 0
-        try {
-            Log.d(TAG, "Triggering live dubbing turn commit to Gemini...")
-            webSocket?.send("{\"clientContent\":{\"turnComplete\":true}}")
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to commit turn: ${e.localizedMessage}")
         }
     }
 

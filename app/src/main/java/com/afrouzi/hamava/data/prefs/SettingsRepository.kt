@@ -76,7 +76,7 @@ class SettingsRepository @Inject constructor(
         val targetLangCode = generalPrefs.getString(KEY_TARGET_LANG, "fa") ?: "fa"
         val voiceId = generalPrefs.getString(KEY_VOICE_ID, GeminiVoice.AOEDE.id) ?: GeminiVoice.AOEDE.id
         val savedModel = generalPrefs.getString(KEY_MODEL, GeminiConstants.DEFAULT_MODEL) ?: GeminiConstants.DEFAULT_MODEL
-        val model = if (savedModel.contains("exp") || savedModel.contains("3.5") || savedModel.contains("2.0") || savedModel.isBlank()) {
+        val model = if (savedModel.contains("exp") || savedModel.contains("2.0") || savedModel.contains("3.8") || savedModel.isBlank()) {
             GeminiConstants.DEFAULT_MODEL
         } else {
             savedModel

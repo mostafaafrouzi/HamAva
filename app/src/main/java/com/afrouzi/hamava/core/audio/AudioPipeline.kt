@@ -110,6 +110,7 @@ class AudioPipeline(
                 Log.d("HamAva", "AudioPipeline: Initializing SystemAudioCapture with MediaProjection")
                 systemCapture = SystemAudioCapture(
                     mediaProjection = mediaProjection,
+                    context = context,
                     onAudioChunkCaptured = { chunk, length, rms ->
                         _inputRms.value = rms
                         geminiSession?.sendAudioChunk(chunk, length, rms)

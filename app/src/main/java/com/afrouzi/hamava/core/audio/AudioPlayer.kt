@@ -58,7 +58,7 @@ class AudioPlayer(
             audioTrack = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )
@@ -116,13 +116,19 @@ class AudioPlayer(
                     audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
                         .setAudioAttributes(
                             AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                                 .build()
                         )
                         .setAcceptsDelayedFocusGain(true)
                         .setWillPauseWhenDucked(false)
-                        .setOnAudioFocusChangeListener { }
+                        .setOnAudioFocusChangeListener { focusChange ->
+                            if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                                focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                                focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                                isFocusHeld = false
+                            }
+                        }
                         .build()
                 }
                 val res = audioFocusRequest?.let { audioManager?.requestAudioFocus(it) }
@@ -133,7 +139,13 @@ class AudioPlayer(
             } else {
                 @Suppress("DEPRECATION")
                 val res = audioManager?.requestAudioFocus(
-                    null,
+                    { focusChange ->
+                        if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                            isFocusHeld = false
+                        }
+                    },
                     AudioManager.STREAM_MUSIC,
                     AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
                 )
@@ -165,9 +177,11 @@ class AudioPlayer(
     }
 
     fun playChunk(pcm24kBytes: ByteArray) {
-        if (!isPlaying.get() || audioTrack == null || pcm24kBytes.isEmpty()) return
+        if (!isPlaying.get() || audioTrack == null || pcm24kBytes.size < 64) return
 
-        requestDuckingFocus()
+        if (!isFocusHeld) {
+            requestDuckingFocus()
+        }
         Log.d("HamAva", "AudioPlayer: enqueuing chunk (${pcm24kBytes.size} bytes)")
         playbackChannel.trySend(pcm24kBytes)
     }

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Sound Waves Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7C4DFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 32,54 A 22,22 0 0,0 76,54" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#00D4AA"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M 24,54 A 30,30 0 0,0 84,54" />
+    <!-- Center Microphone -->
+    <path
+        android:fillColor="#00D4AA"
+        android:pathData="M54,34c-4.4,0 -8,3.6 -8,8v12c0,4.4 3.6,8 8,8s8,-3.6 8,-8V42C62,37.6 58.4,34 54,34z" />
+    <!-- Stand -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,66h4v10h-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,76h20v4h-20z" />
+</vector>

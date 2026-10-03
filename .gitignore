@@ -1,0 +1,82 @@
+# ===========================
+# Android
+# ===========================
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ===========================
+# Local config
+# ===========================
+local.properties
+*.properties
+!gradle.properties
+!gradle/wrapper/gradle-wrapper.properties
+
+# ===========================
+# Navigation
+# ===========================
+.navigation/
+
+# ===========================
+# Android Studio
+# ===========================
+captures/
+*.iml
+.idea/
+!/.idea/codeStyles/
+!/.idea/inspectionProfiles/
+!/.idea/runConfigurations.xml
+.kotlin/
+.externalNativeBuild
+.cxx/
+
+# ===========================
+# Signing - NEVER COMMIT
+# ===========================
+*.jks
+*.keystore
+*.pem
+keystore/
+keystore.properties
+keystore-credentials.txt
+keystore-base64.txt
+credentials.txt
+
+# ===========================
+# Firebase & Services
+# ===========================
+google-services.json
+
+# ===========================
+# HamAva Specific
+# ===========================
+# پوشه tmp از گیت ایگنور است
+tmp/
+_research/
+
+# ===========================
+# Logs
+# ===========================
+logcat.txt
+**/logcat.txt
+*.hprof
+
+# ===========================
+# OS
+# ===========================
+.DS_Store
+Thumbs.db
+*.zip

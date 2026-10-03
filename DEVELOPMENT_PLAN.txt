@@ -1,0 +1,956 @@
+================================================================================
+ سند معماری و توسعه پروژه HamAva (همآوا)
+ HamAva Project Architecture & Development Document
+================================================================================
+ نسخه / Version: 1.0.0-draft
+ تاریخ / Date: 2026-10-03
+ نویسنده / Author: معمار ارشد سیستم
+================================================================================
+
+══════════════════════════════════════════════════════════════
+ بخش اول: خلاصه اجرایی و دید کلی پروژه
+ SECTION 1: EXECUTIVE SUMMARY & PROJECT OVERVIEW
+══════════════════════════════════════════════════════════════
+
+1.1 توضیح پروژه
+-----------------
+HamAva (همآوا) یک اپلیکیشن اندروید native است که با استفاده از
+Gemini Live API گوگل، صدای میکروفون یا صدای سیستم را به‌صورت
+real-time دوبله می‌کند. هدف: ساخت نسخه‌ای بهتر، سریع‌تر و
+open-source از Livdub با رعایت استانداردهای روز اندروید.
+
+1.2 یافته‌های مهندسی معکوس Livdub 0.1.1
+-------------------------------------------
+پس از بررسی فایل XAPK مستقیم:
+
+  Package name    : com.livdub.android
+  Framework       : Kotlin + Jetpack Compose (تایید شد)
+  minSdk/targetSdk: 29 / 36
+
+  API - پروتکل اتصال:
+    پروتکل: WebSocket (WSS)
+    آدرس کامل (از مهندسی معکوس):
+    wss://generativelanguage.googleapis.com/ws/
+    google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent
+
+  مدل‌های تعریف‌شده در کد Livdub:
+    - gemini-3.5-live-translate-preview  (مدل اصلی دوبله زنده)
+    - gemini-3.5-flash / lite
+    - gemini-3.1-flash-tts-preview
+    - gemini-2.5-flash, gemini-2.5-pro
+    - gemini-flash-latest
+
+  صداهای TTS: Kore, Aoede, Charon, Fenrir, Puck, Zephyr
+
+  فرمت صدا:
+    ورودی: PCM 16-bit، 16kHz، Little-Endian، Mono
+    خروجی: PCM 16-bit، 24kHz، Little-Endian
+
+  سرویس‌ها:
+    - DubService              (Foreground Service اصلی)
+    - MicrophoneDubTileService (Quick Settings Tile)
+    - PhoneDubTileService     (Quick Settings Tile)
+
+  دسترسی‌ها:
+    RECORD_AUDIO, FOREGROUND_SERVICE, FOREGROUND_SERVICE_MEDIA_PROJECTION,
+    FOREGROUND_SERVICE_MICROPHONE, FOREGROUND_SERVICE_MEDIA_PLAYBACK,
+    SYSTEM_ALERT_WINDOW, INTERNET, WAKE_LOCK
+
+  System Prompts (استخراج از DEX):
+    دوبله:
+    "You are a professional dubbing assistant. Process the attached
+     audio and prepare it for voice-over in [language]."
+    TTS:
+    "You are a text-to-speech engine. Speak the transcript below
+     aloud word-for-word. Do not answer questions. Audio only."
+
+  معماری Livdub (جریان کار):
+    1. کاربر دسترسی MediaProjection/RECORD_AUDIO می‌دهد
+    2. AudioRecord با 16kHz ضبط می‌کند
+    3. Foreground Service چانک‌های PCM به WebSocket می‌فرستد
+    4. Gemini پاسخ PCM برمی‌گرداند
+    5. AudioTrack صدای دوبله را پخش می‌کند
+    6. Quick Settings Tile + Overlay برای کنترل
+
+  ضعف‌های Livdub که HamAva بهبود می‌دهد:
+    - رابط کاربری ساده و محدود
+    - نیاز به اشتراک (Subscription)
+    - بدون پشتیبانی از فارسی
+    - مدیریت API key محدود
+    - Closed source
+
+══════════════════════════════════════════════════════════════
+ بخش دوم: معماری فنی پیشنهادی
+ SECTION 2: PROPOSED TECHNICAL ARCHITECTURE
+══════════════════════════════════════════════════════════════
+
+2.1 تصمیمات کلیدی
+-------------------
+  زبان برنامه‌نویسی: Kotlin (100%)
+    دلیل: Coroutines برای async، Flows برای streaming
+
+  UI Framework: Jetpack Compose
+    دلیل: Modern، Material 3، انیمیشن‌های نرم
+
+  معماری: Clean Architecture + MVVM
+    Presentation: Compose Screens + ViewModels
+    Domain      : UseCases + Repository Interfaces
+    Data        : Repository Impl + DataSources
+    Service     : Foreground Service (Audio Pipeline)
+
+  Dependency Injection: Hilt
+    دلیل: استاندارد Google، تست‌پذیری بالا
+
+  اتصال Gemini: WebSocket مستقیم (OkHttp)
+    دلیل: کمترین تأخیر، کامل‌ترین کنترل، بدون Firebase
+
+  State Management: Kotlin StateFlow + SharedFlow
+
+  Audio Pipeline:
+    Capture : AudioRecord (میکروفون) + AudioPlaybackCapture (سیستم)
+    Format  : PCM 16-bit، 16kHz، Mono (ورودی)، 24kHz (خروجی)
+    Buffer  : 160ms chunks (~2560 bytes) برای latency بهینه
+    Playback: AudioTrack (direct PCM، non-blocking)
+    Thread  : Coroutine Dispatchers.IO (جداگانه از Main Thread)
+
+2.2 ساختار پروژه
+-----------------
+  app/src/main/java/com/afrouzi/hamava/
+  ├── HamAvaApplication.kt          (Application + Hilt)
+  ├── MainActivity.kt
+  ├── core/
+  │   ├── audio/
+  │   │   ├── AudioCapture.kt       (AudioRecord wrapper)
+  │   │   ├── SystemAudioCapture.kt (MediaProjection wrapper)
+  │   │   ├── AudioPlayer.kt        (AudioTrack wrapper)
+  │   │   └── AudioPipeline.kt      (Orchestrator)
+  │   ├── gemini/
+  │   │   ├── GeminiLiveSession.kt  (WebSocket session manager)
+  │   │   ├── GeminiApi.kt          (constants & message models)
+  │   │   └── AudioChunkProcessor.kt
+  │   └── utils/
+  │       ├── AudioUtils.kt
+  │       └── PermissionUtils.kt
+  ├── data/
+  │   ├── prefs/
+  │   │   └── SettingsRepository.kt (DataStore prefs)
+  │   └── model/
+  │       ├── DubSettings.kt        (Language, voice, model)
+  │       └── DubState.kt           (Running/idle/error)
+  ├── domain/
+  │   ├── usecase/
+  │   │   ├── StartDubbingUseCase.kt
+  │   │   ├── StopDubbingUseCase.kt
+  │   │   └── ValidateApiKeyUseCase.kt
+  │   └── repository/
+  │       └── SettingsRepositoryInterface.kt
+  ├── service/
+  │   ├── DubForegroundService.kt   (Main Foreground Service)
+  │   ├── MicTileService.kt         (Quick Settings: Mic)
+  │   └── SystemAudioTileService.kt (Quick Settings: System audio)
+  └── ui/
+      ├── theme/
+      │   ├── Theme.kt              (Material3 Dark/Light)
+      │   ├── Color.kt
+      │   ├── Type.kt               (IranSansX + Roboto)
+      │   └── Shape.kt
+      ├── components/
+      │   ├── DubButton.kt          (Main animated button)
+      │   ├── LanguageSelector.kt
+      │   ├── VoiceSelector.kt
+      │   ├── AudioWaveform.kt      (Live waveform visualizer)
+      │   └── StatusCard.kt
+      └── screens/
+          ├── home/
+          │   ├── HomeScreen.kt
+          │   └── HomeViewModel.kt
+          ├── settings/
+          │   ├── SettingsScreen.kt
+          │   └── SettingsViewModel.kt
+          └── about/
+              └── AboutScreen.kt
+
+  app/src/main/res/
+  ├── font/                          (IranSansX TTF)
+  ├── values/strings.xml             (EN - پیش‌فرض)
+  └── values-fa/strings.xml          (FA)
+
+  app/src/main/assets/
+  └── fontiran/                      (IranSansX + لایسنس)
+
+2.3 جریان داده Real-Time
+--------------------------
+  [Mic/System]
+      |
+      v
+  AudioRecord (16kHz PCM) --> Buffer (160ms chunks)
+      |
+      v
+  GeminiLiveSession (OkHttp WebSocket)
+      |
+      +--> Send: { realtime_input: { audio: { data: base64(pcm), mime_type: "audio/pcm" } } }
+      |
+      v
+  WebSocket Response Handler
+      |
+      +--> Receive: { serverContent: { modelTurn: { parts: [{ inlineData: PCM 24kHz }] } } }
+      |
+      v
+  AudioTrack (24kHz PCM) --> [Speaker]
+
+2.4 مدیریت API Key
+--------------------
+  ذخیره‌سازی: EncryptedSharedPreferences + Android Keystore
+  رابط       : TextField ماسک‌شده
+  اعتبارسنجی: درخواست ساده قبل از ذخیره
+  امنیت     : هرگز در Log یا Crash report نیست
+
+══════════════════════════════════════════════════════════════
+ بخش سوم: طراحی UI/UX
+ SECTION 3: UI/UX DESIGN
+══════════════════════════════════════════════════════════════
+
+3.1 اصول طراحی
+---------------
+  - Material Design 3 با Dynamic Color
+  - Dark mode به‌عنوان پیش‌فرض
+  - پشتیبانی RTL کامل
+  - انیمیشن‌های Lottie برای حالت فعال
+  - حداقل‌گرا: دو صفحه اصلی
+
+3.2 صفحه اصلی (Home Screen)
+------------------------------
+  ┌─────────────────────────────────┐
+  │     همآوا / HamAva [Logo]       │
+  │                                 │
+  │  [منبع صدا]      [زبان هدف]    │
+  │  میکروفون/سیستم  فارسی/...      │
+  │                                 │
+  │     [ Audio Waveform Viz ]      │
+  │                                 │
+  │        ┌────────────┐           │
+  │        │  ● شروع    │           │
+  │        │   دوبله    │  (بزرگ)  │
+  │        └────────────┘           │
+  │                                 │
+  │  Volume: ████░░░ 60%           │
+  │  Status: آماده | Latency: --ms  │
+  └─────────────────────────────────┘
+
+  کامپوننت‌ها:
+  - DubButton: دکمه بزرگ مرکزی با pulse animation در حالت فعال
+  - SourceSelector: Chip group (میکروفون / صدای سیستم)
+  - LanguageSelector: BottomSheet با جستجو (70+ زبان)
+  - VoiceSelector: Chip group (Aoede, Charon, Fenrir, Kore, Puck, Zephyr)
+  - AudioWaveform: Canvas-based real-time waveform
+  - VolumeSlider: Mix صدای اصلی با دوبله
+  - StatusBadge: latency و وضعیت اتصال
+
+3.3 صفحه تنظیمات
+------------------
+  بخش API:
+    - Gemini API Key (EncryptedSharedPreferences)
+    - دکمه تست API
+    - انتخاب مدل (gemini-3.5-live-translate / gemini-3.5-flash)
+
+  بخش صدا:
+    - انتخاب صدا (Voice)
+    - نرخ نمونه‌برداری خروجی
+
+  بخش زبان:
+    - زبان مبدأ (Auto-detect پیش‌فرض)
+    - زبان هدف
+
+  بخش ظاهر:
+    - تم (تاریک/روشن/سیستم)
+    - زبان رابط (فارسی/انگلیسی)
+    - فونت (IranSansX / Roboto)
+
+  بخش درباره --> AboutScreen (دوزبانه)
+
+3.4 سیستم رنگ
+--------------
+  Primary   : #6750A4 (Material3 Purple)
+  Background: #0F0F1A (Dark default)
+  Surface   : #1C1C2E
+  Active    : #00D4AA (Cyan/Teal برای حالت فعال)
+  Error     : #CF6679
+
+3.5 فونت‌ها
+-----------
+  فارسی: IranSansX Eco
+    IRANSansX-Regular.ttf (متن عادی)
+    IRANSansX-Bold.ttf    (عنوان‌ها)
+    مسیر: D:\Github Repository\MyCard\tmp\IranSansX(Eco)\iransansX family\Otf fonts\
+    در پروژه: app/src/main/assets/fontiran/
+
+  انگلیسی: Roboto (پیش‌فرض Android)
+
+  Compose Typography:
+    val iranSansFamily = FontFamily(
+        Font(R.font.iran_sans_x_regular, FontWeight.Normal),
+        Font(R.font.iran_sans_x_bold, FontWeight.Bold)
+    )
+    val appFont = if (locale.language == "fa") iranSansFamily
+                  else FontFamily.Default
+
+══════════════════════════════════════════════════════════════
+ بخش چهارم: استانداردهای کدنویسی
+ SECTION 4: CODING STANDARDS
+══════════════════════════════════════════════════════════════
+
+4.1 قوانین Kotlin
+------------------
+  - Kotlin Coding Conventions
+  - Copyright header در هر فایل
+  - حداکثر 120 کاراکتر در خط
+  - PascalCase برای class، camelCase برای function/variable
+  - SCREAMING_SNAKE_CASE برای constants
+  - Sealed class برای Result<T> و UiState
+  - suspend functions فقط از coroutine context
+
+4.2 Compose Best Practices
+---------------------------
+  - هر Composable در فایل جداگانه
+  - State hoisting: state در ViewModel
+  - Preview annotation برای همه Composables
+  - remember {} برای محاسبات سنگین
+
+4.3 Error Handling
+-------------------
+  - Result<T, DubError> برای تمام عملیات async
+  - sealed class DubError { NetworkError, ApiKeyError, AudioError, ... }
+  - هیچ unhandled exception نیست
+
+4.4 Testing
+-----------
+  - Unit Tests: domain layer با JUnit5 + MockK
+  - Integration Tests: ViewModel با Turbine
+  - UI Tests: Compose UI Tests
+  - Coverage: حداقل 70%
+
+4.5 Copyright Header
+---------------------
+  /*
+   * Copyright (c) 2026 Mostafa Afrouzi
+   * Licensed under the Apache License 2.0
+   * https://github.com/mostafaafrouzi/HamAva
+   */
+
+══════════════════════════════════════════════════════════════
+ بخش پنجم: مشخصات Build
+ SECTION 5: BUILD CONFIGURATION
+══════════════════════════════════════════════════════════════
+
+5.1 مشخصات اصلی
+----------------
+  Package Name    : com.afrouzi.hamava
+  minSdk          : 29 (Android 10 - برای AudioPlaybackCapture)
+  targetSdk       : 35 (Android 15)
+  compileSdk      : 35
+  Kotlin          : 2.0.21+
+  AGP             : 8.7.3+
+  JVM Target      : 17
+
+5.2 Build Types
+---------------
+  debug:
+    applicationIdSuffix  = ".debug"
+    versionNameSuffix    = "-debug"
+    BuildConfig.GEMINI_API_KEY از local.properties
+
+  release:
+    minifyEnabled = true
+    shrinkResources = true
+    signingConfig از keystore.properties
+
+5.3 Dependencies اصلی
+-----------------------
+  [Core]
+  androidx.core:core-ktx:1.15.0
+  androidx.lifecycle:lifecycle-runtime-ktx:2.8.7+
+  androidx.activity:activity-compose:1.9.3+
+
+  [Compose BOM]
+  androidx.compose:compose-bom:2024.10.01+
+  androidx.compose.material3:material3
+  androidx.compose.material:material-icons-extended
+  androidx.navigation:navigation-compose:2.8.4+
+
+  [Hilt DI]
+  com.google.dagger:hilt-android:2.52+
+  androidx.hilt:hilt-navigation-compose:1.2.0+
+
+  [Network - WebSocket]
+  com.squareup.okhttp3:okhttp:4.12.0+
+
+  [DataStore & Security]
+  androidx.datastore:datastore-preferences:1.1.1
+  androidx.security:security-crypto:1.1.0-alpha06+
+
+  [Coroutines]
+  org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0+
+
+  [JSON]
+  com.google.code.gson:gson:2.10.1
+
+  [Lottie]
+  com.airbnb.android:lottie-compose:6.5.0+
+
+  [Logging - debug only]
+  com.jakewharton.timber:timber:5.0.1
+
+5.4 ProGuard Rules
+------------------
+  # Keep Gemini API message classes
+  -keep class com.afrouzi.hamava.core.gemini.** { *; }
+  # Keep OkHttp
+  -dontwarn okhttp3.**
+  -keep class okhttp3.** { *; }
+  # Keep Gson models
+  -keepclassmembers class * {
+      @com.google.gson.annotations.SerializedName <fields>;
+  }
+
+══════════════════════════════════════════════════════════════
+ بخش ششم: Git و گردش کار
+ SECTION 6: GIT & WORKFLOW
+══════════════════════════════════════════════════════════════
+
+6.1 .gitignore
+--------------
+  *** نکته مهم: پوشه tmp/ باید در .gitignore باشد ***
+
+  # Android build
+  *.apk
+  *.aar
+  *.aab
+  *.dex
+  *.class
+  bin/
+  gen/
+  out/
+  release/
+  .gradle/
+  build/
+  !gradle/wrapper/gradle-wrapper.jar
+
+  # Local config
+  local.properties
+  *.properties
+  !gradle.properties
+  !gradle/wrapper/gradle-wrapper.properties
+
+  # Signing - هرگز commit نشود
+  *.jks
+  *.keystore
+  *.pem
+  keystore/
+  keystore.properties
+  keystore-credentials.txt
+  keystore-base64.txt
+  credentials.txt
+
+  # IDE
+  .idea/
+  !/.idea/codeStyles/
+  !/.idea/inspectionProfiles/
+  *.iml
+  .kotlin/
+
+  # HamAva specific
+  tmp/
+  _research/
+  logcat.txt
+  **/logcat.txt
+
+  # Misc
+  .DS_Store
+  Thumbs.db
+  *.hprof
+  *.zip
+  google-services.json
+
+6.2 Branch Strategy
+--------------------
+  main     : کد پایدار و release شده
+  develop  : ادغام فیچرها
+  feature/*: هر فیچر جداگانه
+  hotfix/* : رفع باگ‌های release
+  release/*: آماده‌سازی نسخه
+
+6.3 Commit Convention
+---------------------
+  feat(audio): add microphone capture pipeline
+  fix(gemini): handle WebSocket reconnection
+  refactor(ui): extract DubButton component
+  docs(readme): add Persian translation
+  chore(deps): bump OkHttp to 4.12.0
+  test(usecase): add StartDubbing tests
+
+6.4 GitHub Actions (release.yml)
+----------------------------------
+  Trigger: push با tag v*
+  Jobs:
+    1. Checkout + JDK 17 + Android SDK
+    2. Require secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD)
+    3. Write keystore.properties from secrets
+    4. ./gradlew assembleRelease bundleRelease
+    5. Verify با apksigner + jarsigner
+    6. Name: hamava-v{VERSION}.apk / .aab
+    7. Create GitHub Release از .github/release-notes.md
+
+  دستور انتشار:
+    git tag -a v1.0.0 -m "Release 1.0.0"
+    git push origin v1.0.0
+
+══════════════════════════════════════════════════════════════
+ بخش هفتم: مستندات (README و About)
+ SECTION 7: DOCUMENTATION
+══════════════════════════════════════════════════════════════
+
+7.1 فایل‌های README
+---------------------
+  README.md     (فارسی - RTL)
+  README.en.md  (انگلیسی - LTR)
+
+7.2 ساختار README.md (فارسی)
+------------------------------
+  # همآوا (HamAva)
+  [لوگو] [بادج: Version, License, Android, Kotlin]
+
+  ## درباره برنامه
+  همآوا یک اپلیکیشن اندروید رایگان و متن‌باز است که با Gemini
+  Live API گوگل صدا را به‌صورت زنده دوبله می‌کند.
+
+  ## ویژگی‌ها
+  - دوبله زنده با کمترین تأخیر
+  - پشتیبانی از 70+ زبان
+  - دو حالت: میکروفون / صدای سیستم
+  - انتخاب صدا (Voice)
+  - Quick Settings Tile
+  - رابط فارسی و انگلیسی
+  - رایگان و متن‌باز
+
+  ## دانلود
+  - GitHub: [آخرین نسخه](https://github.com/mostafaafrouzi/HamAva/releases/latest)
+  - Cafe Bazaar: به‌زودی
+  - Google Play: به‌زودی
+
+  ## پیش‌نیازها
+  - اندروید 10 یا بالاتر
+  - کلید API از https://aistudio.google.com
+
+  ## فناوری‌ها
+  Kotlin | Jetpack Compose | Material 3 | Hilt | OkHttp | Gemini Live API
+
+  ## نویسنده
+  مصطفی افروزی
+  وبسایت: https://afrouzi.ir/?utm_source=github&utm_medium=readme_fa&utm_campaign=hamava
+  گیت‌هاب: https://github.com/mostafaafrouzi
+  لینکدین: https://linkedin.com/in/mostafaafrouzi
+  کافه‌بازار: https://cafebazaar.ir/developer/057657612999
+
+  ## مجوز
+  Apache License 2.0
+
+7.3 ساختار README.en.md (انگلیسی)
+------------------------------------
+  # HamAva — Live Audio Dubbing for Android
+  [Badges]
+
+  ## About
+  HamAva is a free, open-source Android app that uses Google's
+  Gemini Live API to dub audio in real time.
+
+  ## Author
+  Mostafa Afrouzi
+  Website: https://afrouzi.ir/en/?utm_source=github&utm_medium=readme_en&utm_campaign=hamava
+  GitHub : https://github.com/mostafaafrouzi
+  LinkedIn: https://linkedin.com/in/mostafaafrouzi
+
+7.4 صفحه About در اپ
+-----------------------
+  محتوا (locale-aware):
+  - نام: HamAva / همآوا
+  - نسخه: BuildConfig.VERSION_NAME
+  - توضیح کوتاه
+  - لیست فناوری‌ها
+  - لینک GitHub (با UTM)
+  - لینک وبسایت (با UTM)
+  - لینک Privacy Policy
+  - اطلاعات مجوز فونت
+
+  UTM در About Screen:
+    utm_source=hamava_app&utm_medium=about_screen&utm_campaign=hamava
+
+7.5 الگوی UTM Links (مانند MyCard)
+-------------------------------------
+  GitHub README فارسی  : utm_source=github&utm_medium=readme_fa&utm_campaign=hamava
+  GitHub README انگلیسی: utm_source=github&utm_medium=readme_en&utm_campaign=hamava
+  Release Notes        : utm_source=github&utm_medium=release_notes&utm_campaign=hamava
+  About Screen         : utm_source=hamava_app&utm_medium=about_screen&utm_campaign=hamava
+  Cafe Bazaar          : utm_source=cafebazaar&utm_medium=store&utm_campaign=hamava
+  Google Play          : utm_source=google_play&utm_medium=store&utm_campaign=hamava
+
+7.6 .github/release-notes.md ساختار
+--------------------------------------
+  ## فارسی
+  **X.Y.Z** - [توضیح]
+  **تغییرات جدید**
+  - ...
+  **حریم خصوصی:** بدون اینترنت به سرور ما. API Key متعلق به شما.
+
+  ---
+
+  ## English
+  **X.Y.Z** - [description]
+  **New features**
+  - ...
+  **Privacy:** No data sent to our servers. Your API key, your data.
+
+  ---
+
+  ## Downloads
+  - APK for direct installation and Cafe Bazaar
+  - AAB for Google Play Console
+
+  com.afrouzi.hamava | versionName X.Y.Z | minSdk 29 | targetSdk 35
+
+  Full docs: [فارسی](README.md) | [English](README.en.md)
+  Built by [Mostafa Afrouzi](https://afrouzi.ir/?utm_source=github&utm_medium=release_notes&utm_campaign=hamava)
+
+══════════════════════════════════════════════════════════════
+ بخش هشتم: پیاده‌سازی Gemini Live API
+ SECTION 8: GEMINI LIVE API IMPLEMENTATION
+══════════════════════════════════════════════════════════════
+
+8.1 اتصال WebSocket
+--------------------
+  Endpoint:
+    wss://generativelanguage.googleapis.com/ws/
+    google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent
+    ?key={API_KEY}
+
+  پیام Setup (JSON):
+  {
+    "setup": {
+      "model": "models/gemini-3.5-live-translate-preview",
+      "generation_config": {
+        "response_modalities": ["AUDIO"],
+        "speech_config": {
+          "voice_config": {
+            "prebuilt_voice_config": { "voice_name": "Aoede" }
+          }
+        }
+      },
+      "system_instruction": {
+        "parts": [{
+          "text": "You are a real-time dubbing assistant. Translate and
+                   speak the audio into [TARGET_LANGUAGE] naturally,
+                   preserving tone and emotion. No commentary."
+        }]
+      }
+    }
+  }
+
+8.2 ارسال صدا
+--------------
+  {
+    "realtime_input": {
+      "audio": {
+        "data": "<base64_pcm_16bit_16khz>",
+        "mime_type": "audio/pcm;rate=16000"
+      }
+    }
+  }
+
+8.3 دریافت پاسخ
+----------------
+  {
+    "serverContent": {
+      "modelTurn": {
+        "parts": [{
+          "inlineData": {
+            "data": "<base64_pcm_16bit_24khz>",
+            "mimeType": "audio/pcm;rate=24000"
+          }
+        }]
+      }
+    }
+  }
+
+8.4 Reconnection Strategy
+--------------------------
+  - Exponential backoff: 1s -> 2s -> 4s -> 8s -> max 30s
+  - حداکثر 5 بار تلاش
+  - نمایش وضعیت در UI
+
+8.5 Audio Capture Code Pattern
+--------------------------------
+  // Microphone Capture
+  val recorder = AudioRecord.Builder()
+      .setAudioSource(MediaRecorder.AudioSource.MIC)
+      .setAudioFormat(
+          AudioFormat.Builder()
+              .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+              .setSampleRate(16000)
+              .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+              .build()
+      )
+      .setBufferSizeInBytes(bufferSize) // ~160ms
+      .build()
+
+  // Playback
+  val player = AudioTrack.Builder()
+      .setAudioAttributes(AudioAttributes.Builder()
+          .setUsage(AudioAttributes.USAGE_MEDIA)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+          .build())
+      .setAudioFormat(AudioFormat.Builder()
+          .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+          .setSampleRate(24000)
+          .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+          .build())
+      .setTransferMode(AudioTrack.MODE_STREAM)
+      .build()
+
+  // System Audio Capture (Android 10+)
+  val config = AudioPlaybackCaptureConfiguration.Builder(mediaProjection)
+      .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+      .addMatchingUsage(AudioAttributes.USAGE_GAME)
+      .build()
+
+══════════════════════════════════════════════════════════════
+ بخش نهم: نقشه راه توسعه
+ SECTION 9: DEVELOPMENT ROADMAP
+══════════════════════════════════════════════════════════════
+
+9.1 Sprint 1 - زیرساخت (5 روز)
+---------------------------------
+  [ ] ایجاد پروژه Android جدید
+  [ ] پیکربندی build.gradle.kts
+  [ ] Theme + Typography (IranSansX + Material3)
+  [ ] ساختار پوشه‌ها
+  [ ] Hilt setup
+  [ ] .gitignore (با tmp/)
+  [ ] تست build اولیه
+
+9.2 Sprint 2 - هسته صدا (7 روز)
+----------------------------------
+  [ ] AudioCapture (میکروفون)
+  [ ] AudioPlayer (AudioTrack)
+  [ ] GeminiLiveSession (WebSocket)
+  [ ] DubForegroundService
+  [ ] SettingsRepository (DataStore + EncryptedSharedPreferences)
+  [ ] Unit tests برای UseCases
+
+9.3 Sprint 3 - رابط کاربری (5 روز)
+--------------------------------------
+  [ ] HomeScreen + HomeViewModel
+  [ ] SettingsScreen + SettingsViewModel
+  [ ] AboutScreen (دوزبانه)
+  [ ] AudioWaveform Component
+  [ ] DubButton با انیمیشن
+  [ ] LanguageSelector BottomSheet
+  [ ] VoiceSelector Chips
+  [ ] Navigation Graph
+
+9.4 Sprint 4 - صدای سیستم و Tiles (4 روز)
+--------------------------------------------
+  [ ] SystemAudioCapture (MediaProjection)
+  [ ] MicTileService
+  [ ] SystemAudioTileService
+  [ ] Notification Actions
+
+9.5 Sprint 5 - صیقل‌کاری (5 روز)
+------------------------------------
+  [ ] بهینه‌سازی latency
+  [ ] مدیریت کامل خطاها
+  [ ] Dark/Light theme کامل
+  [ ] RTL support کامل
+  [ ] Integration tests
+  [ ] ProGuard optimization
+
+9.6 Sprint 6 - انتشار (3 روز)
+--------------------------------
+  [ ] ایجاد keystore
+  [ ] GitHub Actions (release.yml)
+  [ ] README.md (فارسی)
+  [ ] README.en.md (انگلیسی)
+  [ ] .github/release-notes.md
+  [ ] Tag v1.0.0
+  [ ] GitHub Release
+  [ ] Cafe Bazaar upload
+
+══════════════════════════════════════════════════════════════
+ بخش دهم: امنیت و حریم خصوصی
+ SECTION 10: SECURITY & PRIVACY
+══════════════════════════════════════════════════════════════
+
+10.1 امنیت API Key
+-------------------
+  - ذخیره: EncryptedSharedPreferences + Android Keystore AES256-GCM
+  - انتقال: فقط WSS (TLS)
+  - نمایش: ماسک‌شده در UI
+  - Log: هیچ API key در Logcat نیست
+
+10.2 دسترسی‌ها (Permissions)
+-------------------------------
+  | دسترسی                              | دلیل                     |
+  |--------------------------------------|--------------------------|
+  | RECORD_AUDIO                         | ضبط میکروفون             |
+  | FOREGROUND_SERVICE                   | اجرا در پس‌زمینه         |
+  | FOREGROUND_SERVICE_MICROPHONE        | نوع سرویس میکروفون       |
+  | FOREGROUND_SERVICE_MEDIA_PROJECTION  | نوع سرویس سیستم          |
+  | FOREGROUND_SERVICE_MEDIA_PLAYBACK    | نوع سرویس پخش            |
+  | INTERNET                             | اتصال Gemini API         |
+  | WAKE_LOCK                            | جلوگیری از Sleep         |
+  | SYSTEM_ALERT_WINDOW                  | Overlay (اختیاری)        |
+  | POST_NOTIFICATIONS                   | Foreground notification  |
+
+10.3 حریم خصوصی
+-----------------
+  - صدا فقط به Gemini API با API key کاربر ارسال می‌شود
+  - هیچ داده‌ای در سرورهای ما نیست
+  - Analytics/Ads: ندارد
+  - allowBackup="false"
+
+══════════════════════════════════════════════════════════════
+ بخش یازدهم: چندزبانه (i18n)
+ SECTION 11: INTERNATIONALIZATION
+══════════════════════════════════════════════════════════════
+
+11.1 زبان‌های رابط کاربری
+---------------------------
+  فارسی (fa) - پیش‌فرض
+  انگلیسی (en) - ثانویه
+
+  res/values/strings.xml    (انگلیسی)
+  res/values-fa/strings.xml (فارسی)
+
+11.2 RTL Support
+-----------------
+  - android:supportsRtl="true" در Manifest
+  - تمام layout با start/end (نه left/right)
+  - CompositionLocalProvider با LayoutDirection
+
+11.3 زبان‌های دوبله
+---------------------
+  70+ زبان پشتیبانی‌شده توسط Gemini:
+  - فارسی (fa-IR) - برجسته به‌عنوان پیش‌فرض
+  - عربی (ar)
+  - انگلیسی (en-US)
+  - ترکی (tr)
+  - فرانسوی (fr)
+  - آلمانی (de)
+  - ژاپنی (ja)
+  - کره‌ای (ko)
+  - چینی (zh)
+  - روسی (ru)
+  - ... (تمام 70+ زبان Gemini)
+
+══════════════════════════════════════════════════════════════
+ بخش دوازدهم: ریسک‌ها و تفاوت‌ها
+ SECTION 12: RISKS & DIFFERENTIATORS
+══════════════════════════════════════════════════════════════
+
+12.1 ریسک‌های فنی
+------------------
+  1. Latency بالا
+     ریسک: بیش از 2-3 ثانیه غیرقابل استفاده است
+     کاهش: buffer کوچک، thread جداگانه، WebSocket پایدار
+
+  2. AudioPlaybackCapture محدودیت
+     ریسک: برنامه‌هایی با ALLOW_CAPTURE_BY_NONE (Spotify, Netflix)
+     کاهش: توضیح واضح در UI
+
+  3. MediaProjection Permission
+     ریسک: نیاز به تأیید کاربر هر session
+     کاهش: ذخیره resultCode در سرویس
+
+  4. هزینه API کاربر
+     ریسک: کاربر با key شخصی هزینه می‌پردازد
+     کاهش: نمایش هشدار + لینک pricing
+
+  5. Deprecation مدل Preview
+     ریسک: مدل preview ممکن است تغییر کند
+     کاهش: پشتیبانی از چند مدل، انتخاب توسط کاربر
+
+12.2 تفاوت‌ها با Livdub
+--------------------------
+  | ویژگی              | Livdub             | HamAva              |
+  |--------------------|--------------------|--------------------|
+  | قیمت               | Freemium           | رایگان کامل        |
+  | منبع‌باز            | خیر                | بله (Apache 2.0)   |
+  | API Key            | سرور آن‌ها          | کلید خود کاربر     |
+  | زبان رابط          | انگلیسی            | فارسی + انگلیسی    |
+  | فونت فارسی         | ندارد              | IranSansX          |
+  | Analytics/Ads      | بله (AdMob)        | خیر                |
+  | Package            | com.livdub.android | com.afrouzi.hamava |
+
+══════════════════════════════════════════════════════════════
+ بخش سیزدهم: چک‌لیست نهایی
+ SECTION 13: PRE-RELEASE CHECKLIST
+══════════════════════════════════════════════════════════════
+
+  [ ] ProGuard rules کامل و آزمایش‌شده
+  [ ] تمام strings.xml (fa + en) کامل
+  [ ] IranSansX در assets/fontiran/
+  [ ] Privacy Policy URL در About Screen
+  [ ] Terms of Service URL در About Screen
+  [ ] آیکون برنامه در تمام densities
+  [ ] README.md فارسی با UTM links
+  [ ] README.en.md انگلیسی با UTM links
+  [ ] .github/release-notes.md دوزبانه
+  [ ] .github/workflows/release.yml
+  [ ] keystore ایجاد و backup امن
+  [ ] GitHub Secrets تنظیم
+  [ ] .gitignore شامل tmp/ و keystore/
+  [ ] تست روی API 29 و API 35
+  [ ] تست Dark/Light mode
+  [ ] تست RTL فارسی و LTR انگلیسی
+  [ ] تست با API key واقعی
+  [ ] تست latency با صدای واقعی
+  [ ] هیچ API key در Logcat نیست
+  [ ] versionCode و versionName به‌روزرسانی
+
+══════════════════════════════════════════════════════════════
+ بخش چهاردهم: منابع
+ SECTION 14: REFERENCES
+══════════════════════════════════════════════════════════════
+
+  Gemini Live API Docs:
+    https://ai.google.dev/gemini-api/docs/live
+
+  Gemini API BidiGenerateContent:
+    https://ai.google.dev/api/generate-content#v1beta.GenerativeService.BidiGenerateContent
+
+  Google AI Studio (API Key):
+    https://aistudio.google.com/apikey
+
+  مدل translate (از مهندسی معکوس):
+    models/gemini-3.5-live-translate-preview
+
+  WebSocket Endpoint (از مهندسی معکوس Livdub):
+    wss://generativelanguage.googleapis.com/ws/
+    google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent
+
+  Android Audio APIs:
+    AudioRecord: https://developer.android.com/reference/android/media/AudioRecord
+    AudioPlaybackCapture: https://developer.android.com/guide/topics/media/av-capture
+    AudioTrack: https://developer.android.com/reference/android/media/AudioTrack
+    MediaProjection: https://developer.android.com/reference/android/media/projection/MediaProjection
+    Foreground Service Types: https://developer.android.com/develop/background-work/services/fg-service-types
+
+  IranSansX Fonts (local):
+    D:\Github Repository\MyCard\tmp\IranSansX(Eco)\iransansX family\
+
+  Reference Project (MyCard - structural pattern):
+    D:\Github Repository\MyCard
+
+================================================================================
+ پایان سند / End of Document
+ این سند پس از تایید، مبنای توسعه فاز 4 خواهد بود.
+ This document, upon approval, will be the basis for Phase 4 development.
+================================================================================

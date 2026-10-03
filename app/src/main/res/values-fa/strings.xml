@@ -1,0 +1,104 @@
+<resources>
+    <string name="app_name">همآوا</string>
+    <string name="app_tagline">دوبله زنده و بی‌درنگ صدا با Gemini Live API</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">خانه</string>
+    <string name="nav_settings">تنظیمات</string>
+    <string name="nav_about">درباره</string>
+    
+    <!-- Home Screen -->
+    <string name="source_mic">میکروفون</string>
+    <string name="source_system">صدای سیستم</string>
+    <string name="source_label">منبع ورودی صدا</string>
+    <string name="target_lang_label">زبان مقصد دوبله</string>
+    <string name="voice_label">صدای گوینده</string>
+    <string name="start_dubbing">شروع دوبله زنده</string>
+    <string name="stop_dubbing">توقف دوبله</string>
+    <string name="status_ready">آماده برای شروع</string>
+    <string name="status_connecting">در حال اتصال به جمینای…</string>
+    <string name="status_active">دوبله زنده فعال است</string>
+    <string name="status_listening">در حال شنیدن صدا…</string>
+    <string name="status_speaking">در حال پخش صدای دوبله…</string>
+    <string name="status_error">خطا در برقراری ارتباط</string>
+    <string name="status_paused">متوقف موقت</string>
+    <string name="latency_label">تأخیر (Latency)</string>
+    <string name="latency_ms">%d میلی‌ثانیه</string>
+    <string name="no_api_key_banner">کلید API جمینای تنظیم نشده است. جهت وارد کردن کلید اینجا ضربه بزنید.</string>
+    <string name="system_audio_warning">دوبله صدای سیستم از برنامه‌های پشتیبانی‌شده در اندروید ۱۰ به بالا صدا را دریافت می‌کند. برنامه‌های محافظت‌شده (مثل نتفلیکس و اسپاتیفای) اجازه ضبط نمی‌دهند.</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">تنظیمات</string>
+    <string name="api_key_title">کلید اختصاصی Gemini API</string>
+    <string name="api_key_hint">کلید API خود را از گوگل AI Studio وارد کنید</string>
+    <string name="api_key_helper">می‌توانید کلید رایگان خود را از Google AI Studio (aistudio.google.com) دریافت نمایید.</string>
+    <string name="api_key_get">دریافت کلید API</string>
+    <string name="test_connection">بررسی و تست اتصال</string>
+    <string name="testing_connection">در حال بررسی اتصال…</string>
+    <string name="connection_success">کلید API معتبر است و ارتباط با موفقیت برقرار شد!</string>
+    <string name="connection_failed">خطا در اتصال. لطفاً صحت کلید API را بررسی فرمایید.</string>
+    <string name="save_settings">ذخیره تنظیمات</string>
+    <string name="settings_saved">تنظیمات با موفقیت ذخیره شد</string>
+    <string name="gemini_model_title">مدل جمینای (Gemini Model)</string>
+    <string name="gemini_model_subtitle">مدل بلادرنگ دوسویه صوتی</string>
+    <string name="voice_selection_title">شخصیت و لحن صدا</string>
+    <string name="voice_selection_subtitle">صدای پیش‌ساخته گوینده جمینای</string>
+    <string name="appearance_title">ظاهر و زبان برنامه</string>
+    <string name="theme_title">حالت نمایشی (تم)</string>
+    <string name="theme_dark">تاریک (پیش‌فرض)</string>
+    <string name="theme_light">روشن</string>
+    <string name="theme_system">هماهنگ با سیستم</string>
+    <string name="app_language_title">زبان رابط کاربری</string>
+    <string name="app_language_fa">فارسی (پیش‌فرض)</string>
+    <string name="app_language_en">English (انگلیسی)</string>
+    <string name="app_language_system">پیش‌فرض سیستم</string>
+    
+    <!-- Languages -->
+    <string name="lang_fa">فارسی</string>
+    <string name="lang_en">انگلیسی (English)</string>
+    <string name="lang_ar">عربی (العربية)</string>
+    <string name="lang_tr">ترکی (Türkçe)</string>
+    <string name="lang_fr">فرانسوی (Français)</string>
+    <string name="lang_de">آلمانی (Deutsch)</string>
+    <string name="lang_es">اسپانیایی (Español)</string>
+    <string name="lang_it">ایتالیایی (Italiano)</string>
+    <string name="lang_ru">روسی (Русский)</string>
+    <string name="lang_zh">چینی (中文)</string>
+    <string name="lang_ja">ژاپنی (日本語)</string>
+    <string name="lang_ko">کره‌ای (한국어)</string>
+    <string name="lang_hi">هندی (हिन्दी)</string>
+    <string name="search_language">جستجوی زبان…</string>
+    <string name="select_language">انتخاب زبان مقصد</string>
+    
+    <!-- About Screen -->
+    <string name="about_title">درباره همآوا</string>
+    <string name="about_description">همآوا (HamAva) یک اپلیکیشن رایگان و متن‌باز برای دوبله بلادرنگ صدا در اندروید است که بر بستر Gemini Live API گوگل پیاده‌سازی شده است. همآوا صدای میکروفون یا صدای داخلی برنامه‌ها را به زبان دلخواه شما و با کمترین تأخیر دوبله و پخش می‌کند.</string>
+    <string name="developer_title">توسعه‌دهنده</string>
+    <string name="developer_name">مصطفی افروزی</string>
+    <string name="github_repository">مخزن گیت‌هاب پروژه</string>
+    <string name="developer_website">وب‌سایت رسمی</string>
+    <string name="developer_linkedin">صفحه لینکدین</string>
+    <string name="cafebazaar_page">صفحه در کافه‌بازار</string>
+    <string name="license_title">مجوز نرم‌افزار</string>
+    <string name="license_desc">مجوز آپاچی نسخه ۲.۰ (Apache License 2.0)</string>
+    <string name="font_license_title">مجوز فونت</string>
+    <string name="font_license_desc">فونت ایران‌سنس ایکس (IRANSansX Eco) تحت لایسنس نرم‌افزاری فونت‌ایران</string>
+    <string name="privacy_title">حریم خصوصی و امنیت</string>
+    <string name="privacy_desc">کلیه جریان‌های صوتی مستقیماً از دستگاه شما به سرورهای رسمی Gemini Live API گوگل با کلید شخصی خودتان و از طریق پروتکل رمزنگاری شده TLS ارسال می‌شوند. هیچ داده صوتی، متنی یا اطلاعاتی از کاربر در هیچ سرور واسطی ذخیره نمی‌گردد.</string>
+    <string name="version_format">نسخه %1$s (%2$d)</string>
+    
+    <!-- Notification & Services -->
+    <string name="notification_channel_name">سرویس دوبله زنده همآوا</string>
+    <string name="notification_channel_desc">نمایش وضعیت دوبله فعال در پس‌زمینه</string>
+    <string name="notification_title_active">همآوا در حال دوبله زنده صدا است…</string>
+    <string name="notification_text_active">زبان مقصد: %1$s | منبع: %2$s</string>
+    <string name="action_stop">توقف</string>
+    <string name="tile_mic_label">دوبله میکروفون همآوا</string>
+    <string name="tile_phone_label">دوبله سیستم همآوا</string>
+    
+    <!-- Permissions -->
+    <string name="permission_audio_title">دسترسی به میکروفون الزامی است</string>
+    <string name="permission_audio_desc">برای ضبط و دوبله بی‌درنگ صدا، نیاز است دسترسی میکروفون را فعال نمایید.</string>
+    <string name="grant_permission">اعطای دسترسی</string>
+    <string name="permission_denied">دسترسی رد شد. لطفاً از طریق تنظیمات دسترسی لازم را صادر فرمایید.</string>
+</resources>

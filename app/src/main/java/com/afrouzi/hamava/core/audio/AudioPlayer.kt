@@ -17,6 +17,11 @@ import android.util.Log
 import com.afrouzi.hamava.core.utils.AudioUtils
 import com.afrouzi.hamava.data.model.GeminiConstants
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 
 class AudioPlayer(
     private val context: Context? = null,
@@ -31,6 +36,10 @@ class AudioPlayer(
     private val audioManager = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
     private var isFocusHeld = false
+
+    private val playbackScope = CoroutineScope(Dispatchers.IO + Job())
+    private var playbackJob: Job? = null
+    private val playbackChannel = Channel<ByteArray>(Channel.UNLIMITED)
 
     fun start(): Boolean {
         if (isPlaying.get()) return true
@@ -72,12 +81,30 @@ class AudioPlayer(
             audioTrack?.play()
             isPlaying.set(true)
             requestDuckingFocus()
+            startPlaybackWorker()
             Log.d("HamAva", "AudioPlayer started and requested AudioFocus ducking")
             return true
         } catch (e: Exception) {
             onError("AudioTrack exception: ${e.localizedMessage}")
             stop()
             return false
+        }
+    }
+
+    private fun startPlaybackWorker() {
+        playbackJob?.cancel()
+        playbackJob = playbackScope.launch {
+            for (chunk in playbackChannel) {
+                if (!isPlaying.get() || audioTrack == null) break
+                try {
+                    val processedBytes = AudioUtils.applyGain(chunk, chunk.size, volumeRatio)
+                    val rms = AudioUtils.calculateRms(processedBytes, processedBytes.size)
+                    onOutputRmsCalculated(rms)
+                    audioTrack?.write(processedBytes, 0, processedBytes.size, AudioTrack.WRITE_BLOCKING)
+                } catch (e: Exception) {
+                    // Ignore track error on teardown
+                }
+            }
         }
     }
 
@@ -140,17 +167,9 @@ class AudioPlayer(
     fun playChunk(pcm24kBytes: ByteArray) {
         if (!isPlaying.get() || audioTrack == null || pcm24kBytes.isEmpty()) return
 
-        try {
-            requestDuckingFocus()
-            Log.d("HamAva", "AudioPlayer: playing chunk (${pcm24kBytes.size} bytes)")
-            val processedBytes = AudioUtils.applyGain(pcm24kBytes, pcm24kBytes.size, volumeRatio)
-            val rms = AudioUtils.calculateRms(processedBytes, processedBytes.size)
-            onOutputRmsCalculated(rms)
-
-            audioTrack?.write(processedBytes, 0, processedBytes.size, AudioTrack.WRITE_BLOCKING)
-        } catch (e: Exception) {
-            // Write failed or track released
-        }
+        requestDuckingFocus()
+        Log.d("HamAva", "AudioPlayer: enqueuing chunk (${pcm24kBytes.size} bytes)")
+        playbackChannel.trySend(pcm24kBytes)
     }
 
     fun setVolume(volume: Float) {
@@ -164,6 +183,9 @@ class AudioPlayer(
 
     fun stop() {
         isPlaying.set(false)
+        playbackJob?.cancel()
+        playbackJob = null
+        while (playbackChannel.tryReceive().isSuccess) {}
         abandonDuckingFocus()
         try {
             audioTrack?.pause()

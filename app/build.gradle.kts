@@ -24,8 +24,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables.useSupportLibrary = true
+        val defaultApiKey = keystoreProperties.getProperty("geminiApiKey", System.getenv("GEMINI_API_KEY") ?: "")
+        buildConfigField("String", "DEFAULT_GEMINI_API_KEY", "\"$defaultApiKey\"")
     }
 
     signingConfigs {

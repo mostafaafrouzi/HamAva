@@ -58,6 +58,9 @@ class GeminiLiveSession(
     private var lastSendTimestamp = 0L
     private var effectiveModel: String = settings.model
     private var effectiveWsUrl: String = GeminiConstants.LIVE_API_WS_URL
+    private var activeSpeechChunkCount = 0
+    private var silenceChunkCount = 0
+    private val speechRmsThreshold = 0.012f
 
     fun connect() {
         if (settings.apiKey.isBlank()) {
@@ -75,35 +78,9 @@ class GeminiLiveSession(
         }
     }
 
-    private suspend fun resolveModelAndConnect() = withContext(Dispatchers.IO) {
-        val (bidiBeta, bidiAlpha) = fetchBidiModels()
-        Log.d(TAG, "Discovered v1beta Bidi models: $bidiBeta, v1alpha Bidi models: $bidiAlpha")
-
-        var selectedModel = settings.model
-        var selectedWsUrl = GeminiConstants.LIVE_API_WS_URL
-
-        if (bidiBeta.isNotEmpty()) {
-            selectedWsUrl = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
-            selectedModel = if (bidiBeta.contains(settings.model)) {
-                settings.model
-            } else {
-                bidiBeta.firstOrNull { it.contains("2.0-flash") }
-                    ?: bidiBeta.firstOrNull { it.contains("flash") }
-                    ?: bidiBeta.first()
-            }
-        } else if (bidiAlpha.isNotEmpty()) {
-            selectedWsUrl = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent"
-            selectedModel = if (bidiAlpha.contains(settings.model)) {
-                settings.model
-            } else {
-                bidiAlpha.firstOrNull { it.contains("2.0-flash") }
-                    ?: bidiAlpha.firstOrNull { it.contains("flash") }
-                    ?: bidiAlpha.first()
-            }
-        }
-
-        effectiveModel = selectedModel
-        effectiveWsUrl = selectedWsUrl
+    private fun resolveModelAndConnect() {
+        effectiveModel = if (settings.model.isNotBlank()) settings.model else GeminiConstants.DEFAULT_MODEL
+        effectiveWsUrl = GeminiConstants.LIVE_API_WS_URL
         Log.d(TAG, "Selected Gemini model: $effectiveModel via $effectiveWsUrl")
         connectDirectly()
     }
@@ -128,6 +105,14 @@ class GeminiLiveSession(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                handleIncomingMessage(text)
+            }
+
+            override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
+                handleIncomingMessage(bytes.utf8())
+            }
+
+            private fun handleIncomingMessage(text: String) {
                 if (text.contains("\"setupComplete\"")) {
                     Log.d(TAG, "SetupComplete received from Gemini Live API! Ready to stream audio.")
                     isSetupComplete.set(true)
@@ -146,6 +131,7 @@ class GeminiLiveSession(
                         onLatencyUpdated(latency)
                     }
                     onStatusChanged(DubStatus.ACTIVE_SPEAKING)
+                    Log.d(TAG, "Received ${chunks.size} audio chunk(s) from Gemini, playing dub audio...")
                     for (chunk in chunks) {
                         onAudioReceived(chunk)
                     }
@@ -197,9 +183,8 @@ class GeminiLiveSession(
     private fun handleModelFallback(reason: String) {
         val attempt = fallbackAttempts.incrementAndGet()
         val candidates = listOf(
+            "models/gemini-3.8-live",
             "models/gemini-2.0-flash-realtime-exp",
-            "models/gemini-2.0-flash",
-            "models/gemini-2.5-flash",
             "models/gemini-2.0-flash-exp"
         )
         if (attempt <= candidates.size * 2) {
@@ -225,49 +210,6 @@ class GeminiLiveSession(
         }
     }
 
-    private fun fetchBidiModels(): Pair<List<String>, List<String>> {
-        val betaModels = queryBidiList("https://generativelanguage.googleapis.com/v1beta/models?key=${settings.apiKey}")
-        val alphaModels = if (betaModels.isEmpty()) {
-            queryBidiList("https://generativelanguage.googleapis.com/v1alpha/models?key=${settings.apiKey}")
-        } else {
-            emptyList()
-        }
-        return Pair(betaModels, alphaModels)
-    }
-
-    private fun queryBidiList(url: String): List<String> {
-        val list = mutableListOf<String>()
-        try {
-            val req = Request.Builder().url(url).build()
-            client.newCall(req).execute().use { resp ->
-                if (resp.isSuccessful) {
-                    val body = resp.body?.string().orEmpty()
-                    val json = org.json.JSONObject(body)
-                    val modelsArray = json.optJSONArray("models")
-                    if (modelsArray != null) {
-                        for (i in 0 until modelsArray.length()) {
-                            val modelObj = modelsArray.getJSONObject(i)
-                            val name = modelObj.optString("name")
-                            val methods = modelObj.optJSONArray("supportedGenerationMethods")
-                            if (methods != null) {
-                                for (j in 0 until methods.length()) {
-                                    if (methods.getString(j).equals("bidiGenerateContent", ignoreCase = true)) {
-                                        list.add(name)
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Log.w(TAG, "queryBidiList ($url) returned code ${resp.code}")
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "queryBidiList exception: ${e.localizedMessage}")
-        }
-        return list
-    }
 
     private fun sendSetupMessage(ws: WebSocket) {
         val prompt = "You are a professional real-time dubbing assistant. " +
@@ -299,15 +241,41 @@ class GeminiLiveSession(
         ws.send(json)
     }
 
-    fun sendAudioChunk(pcmData: ByteArray, length: Int) {
+    fun sendAudioChunk(pcmData: ByteArray, length: Int, rms: Float = 0f) {
         if (!isConnected.get() || !isSetupComplete.get() || webSocket == null || length <= 0) return
 
         try {
             val json = chunkProcessor.buildRealtimeInputJson(pcmData, length)
             lastSendTimestamp = SystemClock.elapsedRealtime()
             webSocket?.send(json)
+
+            if (rms > speechRmsThreshold) {
+                activeSpeechChunkCount++
+                silenceChunkCount = 0
+                // Continuous speech turn commit after ~2.4s (15 chunks * 160ms)
+                if (activeSpeechChunkCount >= 15) {
+                    commitTurn()
+                }
+            } else {
+                silenceChunkCount++
+                // Speech pause turn commit after ~320ms silence following at least 480ms speech
+                if (activeSpeechChunkCount >= 3 && silenceChunkCount >= 2) {
+                    commitTurn()
+                }
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to send audio chunk: ${e.localizedMessage}")
+        }
+    }
+
+    private fun commitTurn() {
+        activeSpeechChunkCount = 0
+        silenceChunkCount = 0
+        try {
+            Log.d(TAG, "Triggering live dubbing turn commit to Gemini...")
+            webSocket?.send("{\"clientContent\":{\"turnComplete\":true}}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to commit turn: ${e.localizedMessage}")
         }
     }
 

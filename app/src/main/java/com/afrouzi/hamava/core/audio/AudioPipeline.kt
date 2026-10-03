@@ -112,7 +112,7 @@ class AudioPipeline(
                     mediaProjection = mediaProjection,
                     onAudioChunkCaptured = { chunk, length, rms ->
                         _inputRms.value = rms
-                        geminiSession?.sendAudioChunk(chunk, length)
+                        geminiSession?.sendAudioChunk(chunk, length, rms)
                     },
                     onError = { msg ->
                         Log.e("HamAva", "SystemAudioCapture error: $msg")
@@ -133,7 +133,7 @@ class AudioPipeline(
             micCapture = AudioCapture(
                 onAudioChunkCaptured = { chunk, length, rms ->
                     _inputRms.value = rms
-                    geminiSession?.sendAudioChunk(chunk, length)
+                    geminiSession?.sendAudioChunk(chunk, length, rms)
                 },
                 onError = { msg ->
                     emitError(DubError.AudioRecordError(msg))

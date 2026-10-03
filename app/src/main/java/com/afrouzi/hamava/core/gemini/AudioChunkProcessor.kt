@@ -44,8 +44,9 @@ class AudioChunkProcessor(
             if (parts != null) {
                 for (part in parts) {
                     val inlineData = part.inlineData
-                    if (inlineData?.data != null) {
-                        val decodedBytes = Base64.getDecoder().decode(inlineData.data)
+                    val rawData = inlineData?.data
+                    if (!rawData.isNullOrBlank()) {
+                        val decodedBytes = decodeBase64Safe(rawData)
                         if (decodedBytes.isNotEmpty()) {
                             audioChunks.add(decodedBytes)
                         }
@@ -53,8 +54,25 @@ class AudioChunkProcessor(
                 }
             }
         } catch (e: Exception) {
-            // Silently ignore or pass along malformed frame
+            // Log warning on malformed JSON
         }
         return audioChunks
+    }
+
+    private fun decodeBase64Safe(raw: String): ByteArray {
+        val sanitized = raw.replace("\n", "").replace("\r", "").replace(" ", "").trim()
+        return try {
+            Base64.getDecoder().decode(sanitized)
+        } catch (e1: Exception) {
+            try {
+                Base64.getMimeDecoder().decode(sanitized)
+            } catch (e2: Exception) {
+                try {
+                    Base64.getUrlDecoder().decode(sanitized)
+                } catch (e3: Exception) {
+                    ByteArray(0)
+                }
+            }
+        }
     }
 }

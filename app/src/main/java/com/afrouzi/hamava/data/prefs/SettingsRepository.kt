@@ -63,11 +63,20 @@ class SettingsRepository @Inject constructor(
     }
 
     private fun readSettings(): DubSettings {
-        val apiKey = securePrefs.getString(KEY_API_KEY, "") ?: ""
+        val savedApiKey = securePrefs.getString(KEY_API_KEY, "") ?: ""
+        val apiKey = if (savedApiKey.isNotBlank()) {
+            savedApiKey
+        } else {
+            val defaultKey = com.afrouzi.hamava.BuildConfig.DEFAULT_GEMINI_API_KEY
+            if (defaultKey.isNotBlank()) {
+                securePrefs.edit().putString(KEY_API_KEY, defaultKey).apply()
+            }
+            defaultKey
+        }
         val targetLangCode = generalPrefs.getString(KEY_TARGET_LANG, "fa") ?: "fa"
         val voiceId = generalPrefs.getString(KEY_VOICE_ID, GeminiVoice.AOEDE.id) ?: GeminiVoice.AOEDE.id
         val savedModel = generalPrefs.getString(KEY_MODEL, GeminiConstants.DEFAULT_MODEL) ?: GeminiConstants.DEFAULT_MODEL
-        val model = if (savedModel.contains("3.5") || savedModel.contains("gemini-2.0-flash-exp") || savedModel.isBlank()) {
+        val model = if (savedModel.contains("exp") || savedModel.contains("3.5") || savedModel.contains("2.0") || savedModel.isBlank()) {
             GeminiConstants.DEFAULT_MODEL
         } else {
             savedModel

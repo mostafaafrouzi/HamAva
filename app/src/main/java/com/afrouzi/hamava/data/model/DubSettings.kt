@@ -34,13 +34,13 @@ data class GeminiVoice(
 }
 
 object GeminiConstants {
-    const val DEFAULT_MODEL = "models/gemini-2.0-flash-realtime-exp"
-    const val FALLBACK_MODEL = "models/gemini-2.0-flash"
+    const val DEFAULT_MODEL = "models/gemini-3.8-live"
+    const val FALLBACK_MODEL = "models/gemini-2.0-flash-realtime-exp"
 
     val AVAILABLE_MODELS = listOf(
-        DEFAULT_MODEL to "Gemini 2.0 Flash Realtime (پیشنهادی)",
-        FALLBACK_MODEL to "Gemini 2.0 Flash",
-        "models/gemini-2.0-flash-exp" to "Gemini 2.0 Flash Exp (v1alpha)"
+        DEFAULT_MODEL to "Gemini Live (مدل رسمی و فوق‌سریع)",
+        FALLBACK_MODEL to "Gemini 2.0 Flash Realtime",
+        "models/gemini-2.0-flash-exp" to "Gemini 2.0 Flash Exp"
     )
 
     const val LIVE_API_WS_URL =

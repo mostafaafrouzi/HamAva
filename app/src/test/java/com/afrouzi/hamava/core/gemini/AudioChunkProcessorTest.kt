@@ -19,8 +19,8 @@ class AudioChunkProcessorTest {
         val samplePcm = byteArrayOf(1, 2, 3, 4, 5, 6)
         val json = processor.buildRealtimeInputJson(samplePcm, samplePcm.size)
 
-        assertTrue(json.contains("realtime_input"))
-        assertTrue(json.contains("media_chunks"))
+        assertTrue(json.contains("realtimeInput"))
+        assertTrue(json.contains("mediaChunks"))
         assertTrue(json.contains("audio/pcm;rate=16000"))
         assertTrue(json.contains("data"))
     }

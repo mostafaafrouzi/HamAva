@@ -11,8 +11,8 @@ enum class DubStatus {
     CONNECTING,
     ACTIVE_LISTENING,
     ACTIVE_SPEAKING,
-    PAUSED,
-    ERROR
+    ERROR,
+    PAUSED
 }
 
 sealed class DubError {
@@ -24,7 +24,7 @@ sealed class DubError {
     data class MediaProjectionError(val message: String) : DubError()
     data class UnknownError(val message: String) : DubError()
 
-    fun getUserMessage(isPersian: Boolean): String {
+    fun getUserMessage(isPersian: Boolean = true): String {
         return when (this) {
             is ApiKeyMissing -> if (isPersian) "کلید Gemini API وارد نشده است" else "Gemini API key is missing"
             is ApiKeyInvalid -> if (isPersian) "کلید Gemini API نامعتبر است" else "Gemini API key is invalid"
@@ -44,5 +44,6 @@ data class DubUiState(
     val inputRms: Float = 0f,
     val outputRms: Float = 0f,
     val currentSettings: DubSettings = DubSettings(),
-    val sessionDurationSeconds: Long = 0L
+    val sessionDurationSeconds: Long = 0L,
+    val subtitle: String = ""
 )

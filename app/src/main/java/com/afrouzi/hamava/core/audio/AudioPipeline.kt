@@ -11,6 +11,7 @@ import android.media.projection.MediaProjection
 import android.os.Build
 import android.util.Log
 import com.afrouzi.hamava.core.gemini.GeminiLiveSession
+import com.afrouzi.hamava.core.utils.AudioUtils
 import com.afrouzi.hamava.data.model.AudioSourceType
 import com.afrouzi.hamava.data.model.DubError
 import com.afrouzi.hamava.data.model.DubSettings
@@ -46,6 +47,9 @@ class AudioPipeline(
     private val _outputRms = MutableStateFlow(0f)
     val outputRms: StateFlow<Float> = _outputRms.asStateFlow()
 
+    private val _subtitle = MutableStateFlow("")
+    val subtitle: StateFlow<String> = _subtitle.asStateFlow()
+
     private val _errors = MutableSharedFlow<DubError>(replay = 1)
     val errors: SharedFlow<DubError> = _errors.asSharedFlow()
 
@@ -55,6 +59,7 @@ class AudioPipeline(
     private var player: AudioPlayer? = null
 
     private val isRunning = AtomicBoolean(false)
+    private var silentFramesCount = 0
 
     fun start(): Boolean {
         if (isRunning.get()) return true
@@ -92,6 +97,9 @@ class AudioPipeline(
             onAudioReceived = { chunk24k ->
                 player?.playChunk(chunk24k)
             },
+            onTextReceived = { text ->
+                _subtitle.value = text
+            },
             onStatusChanged = { status ->
                 _status.value = status
             },
@@ -112,8 +120,7 @@ class AudioPipeline(
                     mediaProjection = mediaProjection,
                     context = context,
                     onAudioChunkCaptured = { chunk, length, rms ->
-                        _inputRms.value = rms
-                        geminiSession?.sendAudioChunk(chunk, length, rms)
+                        handleAudioChunk(chunk, length, rms)
                     },
                     onError = { msg ->
                         Log.e("HamAva", "SystemAudioCapture error: $msg")
@@ -132,9 +139,9 @@ class AudioPipeline(
             }
         } else {
             micCapture = AudioCapture(
+                enableAec = settings.enableAec,
                 onAudioChunkCaptured = { chunk, length, rms ->
-                    _inputRms.value = rms
-                    geminiSession?.sendAudioChunk(chunk, length, rms)
+                    handleAudioChunk(chunk, length, rms)
                 },
                 onError = { msg ->
                     emitError(DubError.AudioRecordError(msg))
@@ -149,6 +156,23 @@ class AudioPipeline(
 
         isRunning.set(true)
         return true
+    }
+
+    private fun handleAudioChunk(chunk: ByteArray, length: Int, rms: Float) {
+        _inputRms.value = rms
+        if (settings.silenceSuppression) {
+            val isVoice = AudioUtils.isVoiceActive(rms, threshold = 0.0035f)
+            if (!isVoice) {
+                silentFramesCount++
+                // Send keepalive heartbeat once every 12 frames (~2 seconds of silence)
+                if (silentFramesCount % 12 != 1) {
+                    return
+                }
+            } else {
+                silentFramesCount = 0
+            }
+        }
+        geminiSession?.sendAudioChunk(chunk, length, rms)
     }
 
     fun setVolume(volume: Float) {
@@ -178,6 +202,8 @@ class AudioPipeline(
         _status.value = DubStatus.IDLE
         _inputRms.value = 0f
         _outputRms.value = 0f
+        _subtitle.value = ""
+        silentFramesCount = 0
     }
 
     fun isActive(): Boolean = isRunning.get()

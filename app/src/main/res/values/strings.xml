@@ -26,7 +26,11 @@
     <string name="latency_ms">%d ms</string>
     <string name="no_api_key_banner">Gemini API key is required. Tap here to configure.</string>
     <string name="system_audio_warning">System audio dubbing captures audio from supported apps (Android 10+). DRM-protected apps like Netflix/Spotify cannot be captured.</string>
-    
+    <string name="overlay_banner">Grant permission to show floating dubbing control over videos in other apps.</string>
+    <string name="overlay_grant_btn">Grant Permission</string>
+    <string name="live_subtitles_label">Live Subtitles</string>
+    <string name="dub_tone_label">Dubbing Tone</string>
+
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
     <string name="api_key_title">Gemini API Key</string>
@@ -40,10 +44,46 @@
     <string name="connection_failed">Connection failed. Check your API key.</string>
     <string name="save_settings">Save Settings</string>
     <string name="settings_saved">Settings saved</string>
+    
+    <!-- Multi API Keys -->
+    <string name="fallback_keys_title">Backup API Keys (Prevent Quota Exhaustion)</string>
+    <string name="fallback_keys_hint">Additional API keys (one per line)</string>
+    <string name="fallback_keys_desc">If the active key hits quota limit (429 Too Many Requests), HamAva automatically rotates to the next key without interrupting playback.</string>
+
+    <!-- Gemini Model & Voice -->
     <string name="gemini_model_title">Gemini Model</string>
     <string name="gemini_model_subtitle">Real-time bidirectional model</string>
     <string name="voice_selection_title">Dubbing Voice</string>
     <string name="voice_selection_subtitle">Prebuilt voice persona</string>
+
+    <!-- Tone & Subtitles & Overlay -->
+    <string name="features_title">Dubbing Features &amp; Tools</string>
+    <string name="overlay_title">Floating Control Bubble</string>
+    <string name="overlay_desc">Show draggable floating button and mini control panel over YouTube, TikTok, and other video apps</string>
+    <string name="subtitles_title">Live Synchronized Subtitles</string>
+    <string name="subtitles_desc">Display real-time translated text subtitles alongside speech</string>
+    <string name="dub_tone_title">Dubbing Tone</string>
+    <string name="dub_tone_desc">Configure conversational and literary style of translated speech</string>
+
+    <!-- Audio Engineering -->
+    <string name="audio_eng_title">Audio Engineering &amp; Optimization</string>
+    <string name="aec_title">Hardware Echo &amp; Noise Cancellation (AEC)</string>
+    <string name="aec_desc">Prevent phone microphone from re-capturing its own speaker output</string>
+    <string name="silence_suppression_title">Smart Silence Suppression (Save Data)</string>
+    <string name="silence_suppression_desc">Pause audio transmission during video pauses or silence to save API tokens and bandwidth</string>
+
+    <!-- Proxy / Anti-Sanction -->
+    <string name="proxy_title">Network &amp; Proxy Settings</string>
+    <string name="proxy_desc">Route AI traffic through local SOCKS5 or HTTP proxy (e.g. v2ray or Clash) for restricted networks</string>
+    <string name="proxy_type_label">Proxy Protocol:</string>
+    <string name="proxy_none">Disabled (Direct)</string>
+    <string name="proxy_socks">SOCKS5</string>
+    <string name="proxy_http">HTTP</string>
+    <string name="proxy_host_hint">Server Address (e.g. 127.0.0.1)</string>
+    <string name="proxy_port_hint">Port (e.g. 10808)</string>
+    <string name="save_proxy">Save Proxy</string>
+
+    <!-- Appearance -->
     <string name="appearance_title">Appearance &amp; Language</string>
     <string name="theme_title">Theme</string>
     <string name="theme_dark">Dark (Default)</string>

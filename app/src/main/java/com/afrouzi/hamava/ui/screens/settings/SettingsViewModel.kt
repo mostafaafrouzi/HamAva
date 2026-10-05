@@ -9,6 +9,7 @@ package com.afrouzi.hamava.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.afrouzi.hamava.data.model.DubSettings
+import com.afrouzi.hamava.data.model.DubTone
 import com.afrouzi.hamava.domain.repository.SettingsRepositoryInterface
 import com.afrouzi.hamava.domain.usecase.ApiKeyValidationResult
 import com.afrouzi.hamava.domain.usecase.ValidateApiKeyUseCase
@@ -30,6 +31,10 @@ enum class ValidationStatus {
 data class SettingsUiState(
     val settings: DubSettings = DubSettings(),
     val apiKeyInput: String = "",
+    val fallbackKeysInput: String = "",
+    val proxyTypeInput: String = "NONE",
+    val proxyHostInput: String = "",
+    val proxyPortInput: String = "",
     val validationStatus: ValidationStatus = ValidationStatus.IDLE,
     val validationMessage: String = ""
 )
@@ -49,7 +54,11 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { current ->
                     current.copy(
                         settings = settings,
-                        apiKeyInput = if (current.apiKeyInput.isBlank()) settings.apiKey else current.apiKeyInput
+                        apiKeyInput = if (current.apiKeyInput.isBlank()) settings.apiKey else current.apiKeyInput,
+                        fallbackKeysInput = if (current.fallbackKeysInput.isBlank()) settings.fallbackApiKeys.joinToString("\n") else current.fallbackKeysInput,
+                        proxyTypeInput = settings.proxyType,
+                        proxyHostInput = if (current.proxyHostInput.isBlank()) settings.proxyHost else current.proxyHostInput,
+                        proxyPortInput = if (current.proxyPortInput.isBlank() && settings.proxyPort > 0) settings.proxyPort.toString() else current.proxyPortInput
                     )
                 }
             }
@@ -66,10 +75,75 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun onFallbackKeysChanged(text: String) {
+        _uiState.update { it.copy(fallbackKeysInput = text) }
+    }
+
+    fun onProxyHostChanged(host: String) {
+        _uiState.update { it.copy(proxyHostInput = host) }
+    }
+
+    fun onProxyPortChanged(port: String) {
+        _uiState.update { it.copy(proxyPortInput = port) }
+    }
+
+    fun onProxyTypeChanged(type: String) {
+        _uiState.update { it.copy(proxyTypeInput = type) }
+    }
+
     fun saveApiKey() {
         val key = _uiState.value.apiKeyInput.trim()
         viewModelScope.launch {
             settingsRepository.updateApiKey(key)
+        }
+    }
+
+    fun saveFallbackKeys() {
+        val keys = _uiState.value.fallbackKeysInput
+            .split("\n", ",")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        viewModelScope.launch {
+            settingsRepository.updateFallbackApiKeys(keys)
+        }
+    }
+
+    fun saveProxySettings() {
+        val type = _uiState.value.proxyTypeInput
+        val host = _uiState.value.proxyHostInput.trim()
+        val port = _uiState.value.proxyPortInput.toIntOrNull() ?: 0
+        viewModelScope.launch {
+            settingsRepository.updateProxySettings(type, host, port)
+        }
+    }
+
+    fun toggleFloatingOverlay(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateEnableFloatingOverlay(enabled)
+        }
+    }
+
+    fun toggleSubtitles(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateEnableSubtitles(enabled)
+        }
+    }
+
+    fun selectDubTone(tone: DubTone) {
+        viewModelScope.launch {
+            settingsRepository.updateDubTone(tone)
+        }
+    }
+
+    fun toggleAec(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateEnableAec(enabled)
+        }
+    }
+
+    fun toggleSilenceSuppression(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSilenceSuppression(enabled)
         }
     }
 

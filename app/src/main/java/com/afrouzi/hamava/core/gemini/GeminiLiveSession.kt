@@ -11,6 +11,7 @@ import android.util.Log
 import com.afrouzi.hamava.data.model.DubError
 import com.afrouzi.hamava.data.model.DubSettings
 import com.afrouzi.hamava.data.model.DubStatus
+import com.afrouzi.hamava.data.model.DubTone
 import com.afrouzi.hamava.data.model.GeminiConstants
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
@@ -18,12 +19,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -31,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class GeminiLiveSession(
     private val settings: DubSettings,
     private val onAudioReceived: (ByteArray) -> Unit,
+    private val onTextReceived: ((String) -> Unit)? = null,
     private val onStatusChanged: (DubStatus) -> Unit,
     private val onLatencyUpdated: (Long) -> Unit,
     private val onError: (DubError) -> Unit
@@ -39,13 +42,10 @@ class GeminiLiveSession(
     private val gson = Gson()
     private val chunkProcessor = AudioChunkProcessor(gson)
 
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .readTimeout(0, TimeUnit.MILLISECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .pingInterval(10, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    private val availableApiKeys = listOf(settings.apiKey) + settings.fallbackApiKeys.filter { it.isNotBlank() }
+    private var currentKeyIndex = AtomicInteger(0)
+
+    private val client: OkHttpClient = createHttpClient()
 
     private var webSocket: WebSocket? = null
     private val isConnected = AtomicBoolean(false)
@@ -59,8 +59,35 @@ class GeminiLiveSession(
     private var effectiveModel: String = settings.model
     private var effectiveWsUrl: String = GeminiConstants.LIVE_API_WS_URL
 
+    private fun createHttpClient(): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .pingInterval(10, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+
+        if (settings.proxyType != "NONE" && settings.proxyHost.isNotBlank() && settings.proxyPort > 0) {
+            try {
+                val proxyType = if (settings.proxyType == "SOCKS") Proxy.Type.SOCKS else Proxy.Type.HTTP
+                val proxy = Proxy(proxyType, InetSocketAddress(settings.proxyHost, settings.proxyPort))
+                builder.proxy(proxy)
+                Log.d(TAG, "Configured ${settings.proxyType} proxy at ${settings.proxyHost}:${settings.proxyPort}")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to configure proxy: ${e.localizedMessage}")
+            }
+        }
+        return builder.build()
+    }
+
+    private fun getActiveApiKey(): String {
+        val idx = currentKeyIndex.get().coerceIn(0, availableApiKeys.size - 1)
+        return availableApiKeys[idx]
+    }
+
     fun connect() {
-        if (settings.apiKey.isBlank()) {
+        val activeKey = getActiveApiKey()
+        if (activeKey.isBlank()) {
             Log.e(TAG, "API key is blank, cannot connect")
             onError(DubError.ApiKeyMissing)
             return
@@ -78,12 +105,13 @@ class GeminiLiveSession(
     private fun resolveModelAndConnect() {
         effectiveModel = if (settings.model.isNotBlank()) settings.model else GeminiConstants.DEFAULT_MODEL
         effectiveWsUrl = GeminiConstants.LIVE_API_WS_URL
-        Log.d(TAG, "Selected Gemini model: $effectiveModel via $effectiveWsUrl")
+        Log.d(TAG, "Selected Gemini model: $effectiveModel via $effectiveWsUrl (Key #${currentKeyIndex.get() + 1}/${availableApiKeys.size})")
         connectDirectly()
     }
 
     private fun connectDirectly() {
-        val wsUrl = "$effectiveWsUrl?key=${settings.apiKey}"
+        val activeKey = getActiveApiKey()
+        val wsUrl = "$effectiveWsUrl?key=$activeKey"
         val request = Request.Builder()
             .url(wsUrl)
             .build()
@@ -121,6 +149,13 @@ class GeminiLiveSession(
                     Log.e(TAG, "Gemini Live API returned error frame: $text")
                 }
 
+                // Extract text subtitles if present
+                val subText = chunkProcessor.extractTextFromResponse(text)
+                if (!subText.isNullOrBlank()) {
+                    onTextReceived?.invoke(subText)
+                }
+
+                // Extract audio chunks
                 val chunks = chunkProcessor.extractAudioFromResponse(text)
                 if (chunks.isNotEmpty()) {
                     if (lastSendTimestamp > 0) {
@@ -128,8 +163,6 @@ class GeminiLiveSession(
                         onLatencyUpdated(latency)
                     }
                     onStatusChanged(DubStatus.ACTIVE_SPEAKING)
-                    val totalBytes = chunks.sumOf { it.size }
-                    Log.d(TAG, "Received ${chunks.size} audio chunk(s) from Gemini ($totalBytes bytes), playing dub audio...")
                     for (chunk in chunks) {
                         onAudioReceived(chunk)
                     }
@@ -138,7 +171,7 @@ class GeminiLiveSession(
                 if (text.contains("\"turnComplete\":true")) {
                     Log.d(TAG, "TurnComplete received from Gemini Live API")
                     sessionScope.launch {
-                        delay(500)
+                        delay(400)
                         if (isConnected.get() && isSetupComplete.get()) {
                             onStatusChanged(DubStatus.ACTIVE_LISTENING)
                         }
@@ -175,7 +208,12 @@ class GeminiLiveSession(
                 isSetupComplete.set(false)
                 if (!isManuallyClosed.get()) {
                     val code = response?.code ?: 0
-                    if (code == 400 || code == 403) {
+                    if (code == 400 || code == 403 || code == 429) {
+                        if (tryFallbackToNextApiKey()) {
+                            Log.i(TAG, "Switched to backup API key #${currentKeyIndex.get() + 1}")
+                            connectDirectly()
+                            return
+                        }
                         onError(DubError.ApiKeyInvalid)
                         onStatusChanged(DubStatus.ERROR)
                     } else {
@@ -186,6 +224,15 @@ class GeminiLiveSession(
                 }
             }
         }
+    }
+
+    private fun tryFallbackToNextApiKey(): Boolean {
+        val nextIdx = currentKeyIndex.incrementAndGet()
+        if (nextIdx < availableApiKeys.size) {
+            return true
+        }
+        currentKeyIndex.set(0) // Wrap around
+        return false
     }
 
     private fun handleModelFallback(reason: String) {
@@ -218,11 +265,36 @@ class GeminiLiveSession(
         }
     }
 
+    private fun handleReconnection(reason: String = "") {
+        val attempt = reconnectAttempts.incrementAndGet()
+        if (attempt <= MAX_RECONNECT_ATTEMPTS) {
+            val delayMs = (attempt * 1000L).coerceAtMost(5000L)
+            Log.d(TAG, "Reconnecting attempt #$attempt in ${delayMs}ms (reason: $reason)")
+            onStatusChanged(DubStatus.CONNECTING)
+            sessionScope.launch {
+                delay(delayMs)
+                if (!isManuallyClosed.get()) {
+                    connectDirectly()
+                }
+            }
+        } else {
+            Log.e(TAG, "Max reconnect attempts ($MAX_RECONNECT_ATTEMPTS) reached")
+            onError(DubError.NetworkError("Failed to reconnect after $MAX_RECONNECT_ATTEMPTS attempts: $reason"))
+            onStatusChanged(DubStatus.ERROR)
+        }
+    }
 
     private fun sendSetupMessage(ws: WebSocket) {
+        val toneInstruction = when (settings.dubTone) {
+            DubTone.COLLOQUIAL -> "Use natural, conversational, and everyday colloquial Persian (فارسی محاوره‌ای و عامیانه). Translate slang and casual phrases naturally into everyday spoken Persian. Match the emotion and energy."
+            DubTone.FORMAL -> "Use formal, academic, and literary Persian (فارسی رسمی و فصیح). Ideal for educational courses, conferences, and news broadcasts. Maintain eloquent vocabulary and correct grammatical structure."
+            DubTone.TECHNICAL -> "Use professional technical Persian. Keep key technical, engineering, software, and AI terms in English or industry standard terms. Do not over-translate specialized terms."
+        }
+
         val prompt = "You are a professional real-time dubbing assistant. " +
                 "You will hear live speech. Immediately translate and speak everything into " +
                 "${settings.targetLanguage.nameEn} (${settings.targetLanguage.nameFa}). " +
+                "$toneInstruction " +
                 "Preserve the emotional tone, cadence, and human feel of the original speaker. " +
                 "Speak ONLY the translated speech. Do not add comments, greetings, or explanations."
 
@@ -264,38 +336,21 @@ class GeminiLiveSession(
         }
     }
 
-    private fun handleReconnection(lastErrorMsg: String = "") {
-        val attempts = reconnectAttempts.incrementAndGet()
-        if (attempts <= MAX_RECONNECT_ATTEMPTS) {
-            onStatusChanged(DubStatus.CONNECTING)
-            val backoffMillis = (1000L * (1 shl (attempts - 1))).coerceAtMost(30000L)
-            Log.d(TAG, "Scheduling reconnection attempt #$attempts in ${backoffMillis}ms")
-            sessionScope.launch {
-                delay(backoffMillis)
-                if (!isManuallyClosed.get()) {
-                    connect()
-                }
-            }
-        } else {
-            Log.e(TAG, "Exceeded max reconnect attempts: $lastErrorMsg")
-            onError(DubError.NetworkError("Failed to reconnect after $MAX_RECONNECT_ATTEMPTS attempts. $lastErrorMsg"))
-            onStatusChanged(DubStatus.ERROR)
-        }
-    }
-
     fun disconnect() {
         Log.d(TAG, "Disconnecting Gemini Live session")
         isManuallyClosed.set(true)
         isConnected.set(false)
         isSetupComplete.set(false)
         try {
-            webSocket?.close(1000, "User stopped dubbing session")
+            webSocket?.close(1000, "User disconnected")
         } catch (e: Exception) {
-            // Socket already closed
+            // Ignore
         }
         webSocket = null
         onStatusChanged(DubStatus.IDLE)
     }
+
+    fun isSessionActive(): Boolean = isConnected.get() && isSetupComplete.get()
 
     companion object {
         private const val TAG = "HamAva"

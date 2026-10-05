@@ -31,6 +31,12 @@ Built to overcome the limitations of proprietary tools like Livdub, HamAva requi
 - 🎙️ **Dual Audio Input Modes:**
   - **Microphone Mode:** Live dubbing for conversations, lectures, meetings, and classes.
   - **Internal System Audio Mode:** High-fidelity internal audio capture via Android 10+ `AudioPlaybackCapture` without ambient room noise.
+- 🪟 **Floating Control Bubble Overlay:** Floating bubble widget with spring snap-to-edge animation and a modern glassmorphic control card to adjust volume, view live latency, read subtitles, and pause/resume dubbing while watching videos in other apps.
+- 🎭 **Tailored Dubbing Tones:** Choose between **Colloquial** (conversational everyday speech for movies & social media), **Formal** (refined academic speech for lectures and news), and **Technical** (preserves specialized engineering terminology).
+- 💬 **Real-Time Synchronized Subtitles:** Simultaneous live text subtitle stream rendered alongside the synthesized audio in the main UI and overlay.
+- 🔄 **Multi-API Key Rotation & Failover:** Store backup API keys; automatically recovers and switches keys upon HTTP 429 quota exhaustion without interrupting playback.
+- 🛡️ **Anti-Sanction Local Proxy (SOCKS5 / HTTP):** Direct WebSocket routing via local proxies (e.g., v2ray, Clash) for reliable connections under regional network restrictions.
+- 🎙️ **Hardware Acoustic Echo Cancellation (AEC):** Hardware AEC and Noise Suppressor integration prevents speaker feedback loop into the microphone; zero-allocation BufferPool keeps latency sub-60ms.
 - ⚡ **Ultra-Low Latency Streaming:** 16kHz 16-bit Mono PCM streamed in 160ms chunks over persistent OkHttp WebSockets with bidirectional full-duplex communication.
 - 🌍 **Over 70 Supported Languages:** Full bidirectional dubbing between Persian (fa-IR), English (en-US), Arabic, Turkish, German, French, Russian, Chinese, Japanese, and more.
 - 🗣️ **6 Natural Google AI Voices:** Select between Aoede, Charon, Fenrir, Kore, Puck, and Zephyr.
@@ -52,7 +58,7 @@ Built to overcome the limitations of proprietary tools like Livdub, HamAva requi
 
 | Platform | Link | Status |
 | :--- | :--- | :--- |
-| **GitHub Releases** | [Download APK / AAB](https://github.com/mostafaafrouzi/HamAva/releases/latest) | ✅ v1.0.0 Available |
+| **GitHub Releases** | [Download APK / AAB](https://github.com/mostafaafrouzi/HamAva/releases/latest) | ✅ v1.2.0 Available |
 | **Cafe Bazaar** | [HamAva on Cafe Bazaar](https://cafebazaar.ir/developer/057657612999?utm_source=github&utm_medium=readme_en&utm_campaign=hamava) | ⏳ Reviewing |
 | **Google Play** | Google Play Store link | ⏳ Coming Soon |
 

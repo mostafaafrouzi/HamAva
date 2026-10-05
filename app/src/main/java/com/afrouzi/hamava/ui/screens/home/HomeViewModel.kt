@@ -11,8 +11,8 @@ import androidx.lifecycle.viewModelScope
 import com.afrouzi.hamava.data.model.AudioSourceType
 import com.afrouzi.hamava.data.model.DubError
 import com.afrouzi.hamava.data.model.DubLanguage
-import com.afrouzi.hamava.data.model.DubSettings
 import com.afrouzi.hamava.data.model.DubStatus
+import com.afrouzi.hamava.data.model.DubTone
 import com.afrouzi.hamava.data.model.DubUiState
 import com.afrouzi.hamava.data.model.GeminiVoice
 import com.afrouzi.hamava.domain.repository.SettingsRepositoryInterface
@@ -53,7 +53,7 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Observe Service Status & Latency
+        // Observe Service Status & Latency & RMS
         viewModelScope.launch {
             combine(
                 DubForegroundService.statusFlow,
@@ -71,6 +71,13 @@ class HomeViewModel @Inject constructor(
                         outputRms = quad.fourth
                     )
                 }
+            }
+        }
+
+        // Observe Subtitles
+        viewModelScope.launch {
+            DubForegroundService.subtitleFlow.collect { sub ->
+                _uiState.update { it.copy(subtitle = sub) }
             }
         }
 
@@ -114,6 +121,18 @@ class HomeViewModel @Inject constructor(
     fun selectVoice(voice: GeminiVoice) {
         viewModelScope.launch {
             settingsRepository.updateVoice(voice)
+        }
+    }
+
+    fun selectDubTone(tone: DubTone) {
+        viewModelScope.launch {
+            settingsRepository.updateDubTone(tone)
+        }
+    }
+
+    fun toggleFloatingOverlay(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateEnableFloatingOverlay(enabled)
         }
     }
 

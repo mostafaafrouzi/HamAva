@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,6 +49,8 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -62,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -71,8 +73,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afrouzi.hamava.R
+import com.afrouzi.hamava.data.model.DubTone
 import com.afrouzi.hamava.data.model.GeminiConstants
 import com.afrouzi.hamava.ui.theme.DarkSurface
 import com.afrouzi.hamava.ui.theme.ErrorColor
@@ -96,6 +100,7 @@ fun SettingsScreen(
 
     val clipboardManager = LocalClipboardManager.current
     var isPasswordVisible by remember { mutableStateOf(false) }
+    val isPersian = uiState.settings.appLanguage == "fa"
 
     Scaffold(
         topBar = {
@@ -314,9 +319,326 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // --- SECTION 2: GEMINI MODEL ---
+            // --- SECTION 2: FALLBACK API KEYS ---
+            Text(
+                text = stringResource(R.string.fallback_keys_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TealActive
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.fallback_keys_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = uiState.fallbackKeysInput,
+                        onValueChange = { viewModel.onFallbackKeysChanged(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.fallback_keys_hint)) },
+                        maxLines = 3,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            viewModel.saveFallbackKeys()
+                            scope.launch {
+                                snackbarHostState.showSnackbar(context.getString(R.string.settings_saved))
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                    ) {
+                        Text(stringResource(R.string.save_settings), color = Color.White)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // --- SECTION 3: FEATURES & TOOLS (OVERLAY & SUBTITLES & TONE) ---
+            Text(
+                text = stringResource(R.string.features_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TealActive
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Floating Overlay Switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.overlay_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = stringResource(R.string.overlay_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = uiState.settings.enableFloatingOverlay,
+                            onCheckedChange = { viewModel.toggleFloatingOverlay(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = TealActive)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Live Subtitles Switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.subtitles_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = stringResource(R.string.subtitles_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = uiState.settings.enableSubtitles,
+                            onCheckedChange = { viewModel.toggleSubtitles(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = TealActive)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Dubbing Tone
+                    Text(
+                        text = stringResource(R.string.dub_tone_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = stringResource(R.string.dub_tone_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    DubTone.entries.forEach { tone ->
+                        val isSelected = uiState.settings.dubTone == tone
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.selectDubTone(tone) }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { viewModel.selectDubTone(tone) },
+                                colors = RadioButtonDefaults.colors(selectedColor = TealActive)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = if (isPersian) tone.titleFa else tone.titleEn,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    text = tone.descriptionFa,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // --- SECTION 4: AUDIO ENGINEERING & OPTIMIZATION ---
+            Text(
+                text = stringResource(R.string.audio_eng_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TealActive
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Hardware AEC
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.aec_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = stringResource(R.string.aec_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = uiState.settings.enableAec,
+                            onCheckedChange = { viewModel.toggleAec(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = TealActive)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Silence Suppression
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.silence_suppression_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = stringResource(R.string.silence_suppression_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = uiState.settings.silenceSuppression,
+                            onCheckedChange = { viewModel.toggleSilenceSuppression(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = TealActive)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // --- SECTION 5: PROXY & ANTI-SANCTION ---
+            Text(
+                text = stringResource(R.string.proxy_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TealActive
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.proxy_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "NONE" to stringResource(R.string.proxy_none),
+                            "SOCKS" to stringResource(R.string.proxy_socks),
+                            "HTTP" to stringResource(R.string.proxy_http)
+                        ).forEach { (type, label) ->
+                            val isSelected = uiState.proxyTypeInput == type
+                            OutlinedButton(
+                                onClick = { viewModel.onProxyTypeChanged(type) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = if (isSelected) ButtonDefaults.outlinedButtonColors(containerColor = TealActive.copy(alpha = 0.2f))
+                                else ButtonDefaults.outlinedButtonColors()
+                            ) {
+                                Text(label, fontSize = 11.sp)
+                            }
+                        }
+                    }
+
+                    if (uiState.proxyTypeInput != "NONE") {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = uiState.proxyHostInput,
+                            onValueChange = { viewModel.onProxyHostChanged(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.proxy_host_hint)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = uiState.proxyPortInput,
+                            onValueChange = { viewModel.onProxyPortChanged(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.proxy_port_hint)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            viewModel.saveProxySettings()
+                            scope.launch {
+                                snackbarHostState.showSnackbar(context.getString(R.string.settings_saved))
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                    ) {
+                        Text(stringResource(R.string.save_proxy), color = Color.White)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // --- SECTION 6: GEMINI MODEL ---
             Text(
                 text = stringResource(R.string.gemini_model_title),
                 style = MaterialTheme.typography.titleMedium,
@@ -363,9 +685,9 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // --- SECTION 3: APPEARANCE & LANGUAGE ---
+            // --- SECTION 7: APPEARANCE & LANGUAGE ---
             Text(
                 text = stringResource(R.string.appearance_title),
                 style = MaterialTheme.typography.titleMedium,

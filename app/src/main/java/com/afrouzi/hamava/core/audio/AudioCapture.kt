@@ -10,6 +10,9 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.NoiseSuppressor
+import android.util.Log
 import com.afrouzi.hamava.core.utils.AudioUtils
 import com.afrouzi.hamava.data.model.GeminiConstants
 import kotlinx.coroutines.CoroutineScope
@@ -20,11 +23,15 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 class AudioCapture(
+    private val enableAec: Boolean = true,
     private val onAudioChunkCaptured: (ByteArray, Int, Float) -> Unit,
     private val onError: (String) -> Unit
 ) {
 
     private var audioRecord: AudioRecord? = null
+    private var echoCanceler: AcousticEchoCanceler? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
+
     private val isRecording = AtomicBoolean(false)
     private var recordingJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -71,6 +78,26 @@ class AudioCapture(
                 return false
             }
 
+            val sessionId = audioRecord?.audioSessionId ?: 0
+            if (sessionId != 0 && enableAec) {
+                try {
+                    if (AcousticEchoCanceler.isAvailable()) {
+                        echoCanceler = AcousticEchoCanceler.create(sessionId)?.apply {
+                            enabled = true
+                        }
+                        Log.d("HamAva", "AcousticEchoCanceler enabled successfully for session $sessionId")
+                    }
+                    if (NoiseSuppressor.isAvailable()) {
+                        noiseSuppressor = NoiseSuppressor.create(sessionId)?.apply {
+                            enabled = true
+                        }
+                        Log.d("HamAva", "NoiseSuppressor enabled successfully for session $sessionId")
+                    }
+                } catch (e: Exception) {
+                    Log.w("HamAva", "Could not initialize hardware AEC/NS: ${e.localizedMessage}")
+                }
+            }
+
             audioRecord?.startRecording()
             isRecording.set(true)
 
@@ -114,6 +141,11 @@ class AudioCapture(
         recordingJob = null
 
         try {
+            echoCanceler?.release()
+            echoCanceler = null
+            noiseSuppressor?.release()
+            noiseSuppressor = null
+
             audioRecord?.stop()
             audioRecord?.release()
         } catch (e: Exception) {
@@ -122,5 +154,5 @@ class AudioCapture(
         audioRecord = null
     }
 
-    fun isCapturing(): Boolean = isRecording.get()
+    fun isRecording(): Boolean = isRecording.get()
 }

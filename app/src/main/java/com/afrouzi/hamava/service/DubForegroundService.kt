@@ -14,16 +14,15 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
-import android.content.res.Configuration
-import android.content.res.Resources
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import java.util.Locale
 import com.afrouzi.hamava.HamAvaApplication
 import com.afrouzi.hamava.MainActivity
 import com.afrouzi.hamava.R
@@ -33,6 +32,7 @@ import com.afrouzi.hamava.data.model.DubError
 import com.afrouzi.hamava.data.model.DubSettings
 import com.afrouzi.hamava.data.model.DubStatus
 import com.afrouzi.hamava.domain.repository.SettingsRepositoryInterface
+import com.afrouzi.hamava.ui.overlay.FloatingOverlayManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -55,6 +56,7 @@ class DubForegroundService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     private var audioPipeline: AudioPipeline? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var floatingOverlay: FloatingOverlayManager? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -128,6 +130,31 @@ class DubForegroundService : Service() {
         _isServiceRunning.value = true
         Log.d("HamAva", "startDubbingSession: source=${settings.audioSource}, targetLang=${settings.targetLanguage.code}, voice=${settings.voice.id}, model=${settings.model}")
 
+        // Initialize Floating Overlay if enabled
+        if (settings.enableFloatingOverlay) {
+            try {
+                floatingOverlay?.hide()
+                floatingOverlay = FloatingOverlayManager(
+                    context = applicationContext,
+                    onToggleDubbing = {
+                        if (_isServiceRunning.value) {
+                            stopDubbingSession()
+                            stopSelf()
+                        }
+                    },
+                    onVolumeChanged = { ratio ->
+                        audioPipeline?.setVolume(ratio)
+                        serviceScope.launch {
+                            settingsRepository.updateDubVolumeRatio(ratio)
+                        }
+                    }
+                )
+                floatingOverlay?.show(settings)
+            } catch (e: Exception) {
+                Log.w("HamAva", "Could not initialize floating overlay: ${e.localizedMessage}")
+            }
+        }
+
         // On Android 10+ (Q+), instantiate MediaProjection AFTER startForeground with MEDIA_PROJECTION type
         if (settings.audioSource == AudioSourceType.SYSTEM) {
             if (resultCode == Activity.RESULT_OK && resultData != null) {
@@ -174,6 +201,7 @@ class DubForegroundService : Service() {
             audioPipeline?.status?.collect { status ->
                 Log.d("HamAva", "DubStatus updated: $status")
                 _statusFlow.value = status
+                floatingOverlay?.updateStatus(status)
                 updateNotificationForStatus(status, settings)
             }
         }
@@ -181,6 +209,7 @@ class DubForegroundService : Service() {
         serviceScope.launch {
             audioPipeline?.latency?.collect { lat ->
                 _latencyFlow.value = lat
+                floatingOverlay?.updateLatency(lat)
             }
         }
 
@@ -193,6 +222,13 @@ class DubForegroundService : Service() {
         serviceScope.launch {
             audioPipeline?.outputRms?.collect { rms ->
                 _outputRmsFlow.value = rms
+            }
+        }
+
+        serviceScope.launch {
+            audioPipeline?.subtitle?.collect { text ->
+                _subtitleFlow.value = text
+                floatingOverlay?.updateSubtitle(text)
             }
         }
 
@@ -217,6 +253,9 @@ class DubForegroundService : Service() {
         }
         activeMediaProjection = null
 
+        floatingOverlay?.hide()
+        floatingOverlay = null
+
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
         }
@@ -225,6 +264,7 @@ class DubForegroundService : Service() {
         _inputRmsFlow.value = 0f
         _outputRmsFlow.value = 0f
         _latencyFlow.value = 0L
+        _subtitleFlow.value = ""
 
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
@@ -260,11 +300,10 @@ class DubForegroundService : Service() {
         targetLang: String,
         source: String
     ): Notification {
-        val res = getLocalizedResources(settings)
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        val pendingOpenApp = PendingIntent.getActivity(
+        val openAppPendingIntent = PendingIntent.getActivity(
             this,
             0,
             openAppIntent,
@@ -281,20 +320,19 @@ class DubForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val title = res.getString(R.string.app_name)
-        val content = "$statusText | $source -> $targetLang"
+        val res = getLocalizedResources(settings)
+        val stopActionText = res.getString(R.string.action_stop)
+        val title = res.getString(R.string.notification_title_active)
+        val contentText = String.format(res.getString(R.string.notification_text_active), targetLang, source) + " • " + statusText
 
         return NotificationCompat.Builder(this, HamAvaApplication.CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText(content)
-            .setSmallIcon(R.drawable.ic_mic)
-            .setContentIntent(pendingOpenApp)
+            .setContentText(contentText)
+            .setSmallIcon(R.drawable.ic_tile_mic)
+            .setContentIntent(openAppPendingIntent)
+            .addAction(android.R.drawable.ic_media_pause, stopActionText, stopPendingIntent)
             .setOngoing(true)
-            .addAction(
-                R.drawable.ic_tile_mic,
-                res.getString(R.string.action_stop),
-                stopPendingIntent
-            )
+            .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
@@ -329,6 +367,9 @@ class DubForegroundService : Service() {
 
         private val _outputRmsFlow = MutableStateFlow(0f)
         val outputRmsFlow: StateFlow<Float> = _outputRmsFlow.asStateFlow()
+
+        private val _subtitleFlow = MutableStateFlow("")
+        val subtitleFlow: StateFlow<String> = _subtitleFlow.asStateFlow()
 
         private val _errorFlow = MutableSharedFlow<DubError>(replay = 1)
         val errorFlow: SharedFlow<DubError> = _errorFlow.asSharedFlow()

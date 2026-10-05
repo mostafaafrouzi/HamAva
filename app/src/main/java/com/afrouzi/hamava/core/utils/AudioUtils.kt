@@ -6,9 +6,33 @@
 
 package com.afrouzi.hamava.core.utils
 
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.sqrt
 
 object AudioUtils {
+
+    /**
+     * High-performance reusable buffer pool to eliminate Garbage Collection (GC) pauses
+     * during continuous high-frequency audio stream processing.
+     */
+    object BufferPool {
+        private val pool5120 = ConcurrentLinkedQueue<ByteArray>()
+        private val poolMax = 16
+
+        fun obtain(size: Int): ByteArray {
+            if (size == 5120) {
+                val buf = pool5120.poll()
+                if (buf != null) return buf
+            }
+            return ByteArray(size)
+        }
+
+        fun recycle(buffer: ByteArray) {
+            if (buffer.size == 5120 && pool5120.size < poolMax) {
+                pool5120.offer(buffer)
+            }
+        }
+    }
 
     /**
      * Calculates the normalized Root Mean Square (RMS) volume from a 16-bit PCM byte array.
@@ -22,7 +46,6 @@ object AudioUtils {
 
         var i = 0
         while (i < readBytes - 1) {
-            // Little-endian 16-bit PCM
             val low = buffer[i].toInt() and 0xFF
             val high = buffer[i + 1].toInt()
             val sample = (high shl 8) or low
@@ -32,9 +55,15 @@ object AudioUtils {
 
         if (sampleCount == 0) return 0f
         val rms = sqrt(sumSquare / sampleCount)
-        // Normalize against max short value (32767)
         val normalized = (rms / 32768.0).toFloat()
         return normalized.coerceIn(0f, 1f)
+    }
+
+    /**
+     * Checks if speech/voice activity is present based on normalized RMS energy.
+     */
+    fun isVoiceActive(rms: Float, threshold: Float = 0.004f): Boolean {
+        return rms >= threshold
     }
 
     /**
@@ -59,6 +88,26 @@ object AudioUtils {
     }
 
     /**
+     * In-place gain modification without allocating a new ByteArray.
+     */
+    fun applyGainInPlace(buffer: ByteArray, offset: Int, length: Int, gainRatio: Float) {
+        if (gainRatio == 1.0f || length <= 0) return
+
+        var i = offset
+        val end = offset + length
+        while (i < end - 1) {
+            val low = buffer[i].toInt() and 0xFF
+            val high = buffer[i + 1].toInt()
+            val sample = ((high shl 8) or low).toShort()
+
+            val scaled = (sample * gainRatio).toInt().coerceIn(-32768, 32767)
+            buffer[i] = (scaled and 0xFF).toByte()
+            buffer[i + 1] = ((scaled shr 8) and 0xFF).toByte()
+            i += 2
+        }
+    }
+
+    /**
      * Resamples 16-bit PCM little-endian audio from an arbitrary input sample rate and channel count
      * to 16,000 Hz mono 16-bit PCM.
      */
@@ -77,7 +126,7 @@ object AudioUtils {
         if (sourceSampleRate == 48000 && sourceChannels == 2) {
             val totalStereoFrames = length / 4
             val outputSampleCount = totalStereoFrames / 3
-            val out = ByteArray(outputSampleCount * 2)
+            val out = BufferPool.obtain(outputSampleCount * 2)
             var inIdx = 0
             var outIdx = 0
 
@@ -91,14 +140,14 @@ object AudioUtils {
                 outIdx += 2
                 inIdx += 12
             }
-            return out
+            return if (out.size == outputSampleCount * 2) out else out.copyOf(outputSampleCount * 2)
         }
 
         // Fast path: 48000 Hz Mono to 16000 Hz Mono (downsample by 3)
         if (sourceSampleRate == 48000 && sourceChannels == 1) {
             val totalSamples = length / 2
             val outputSampleCount = totalSamples / 3
-            val out = ByteArray(outputSampleCount * 2)
+            val out = BufferPool.obtain(outputSampleCount * 2)
             var inIdx = 0
             var outIdx = 0
 
@@ -108,13 +157,13 @@ object AudioUtils {
                 outIdx += 2
                 inIdx += 6
             }
-            return out
+            return if (out.size == outputSampleCount * 2) out else out.copyOf(outputSampleCount * 2)
         }
 
         // Fast path: 16000 Hz Stereo to 16000 Hz Mono
         if (sourceSampleRate == 16000 && sourceChannels == 2) {
             val totalStereoFrames = length / 4
-            val out = ByteArray(totalStereoFrames * 2)
+            val out = BufferPool.obtain(totalStereoFrames * 2)
             var inIdx = 0
             var outIdx = 0
 
@@ -128,7 +177,7 @@ object AudioUtils {
                 outIdx += 2
                 inIdx += 4
             }
-            return out
+            return if (out.size == totalStereoFrames * 2) out else out.copyOf(totalStereoFrames * 2)
         }
 
         // General linear interpolation resampler for any sample rate (e.g. 44100 Hz stereo or mono)
@@ -155,7 +204,7 @@ object AudioUtils {
 
         val ratio = sourceSampleRate.toDouble() / 16000.0
         val outputSampleCount = (inputFrames / ratio).toInt()
-        val out = ByteArray(outputSampleCount * 2)
+        val out = BufferPool.obtain(outputSampleCount * 2)
         var outIdx = 0
 
         for (i in 0 until outputSampleCount) {
@@ -171,6 +220,6 @@ object AudioUtils {
             out[outIdx + 1] = ((interpolated shr 8) and 0xFF).toByte()
             outIdx += 2
         }
-        return out
+        return if (out.size == outputSampleCount * 2) out else out.copyOf(outputSampleCount * 2)
     }
 }

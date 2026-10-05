@@ -11,6 +11,38 @@ enum class AudioSourceType {
     SYSTEM
 }
 
+enum class DubTone(
+    val id: String,
+    val titleFa: String,
+    val titleEn: String,
+    val descriptionFa: String
+) {
+    COLLOQUIAL(
+        "colloquial",
+        "محاوره‌ای و عامیانه",
+        "Casual / Colloquial",
+        "مناسب فیلم، تیک‌تاک و یوتیوب با لحن صمیمی و اصطلاحات روزمره"
+    ),
+    FORMAL(
+        "formal",
+        "رسمی و آکادمیک",
+        "Formal / Academic",
+        "مناسب دوره‌های آموزشی، اخبار، سخنرانی و محیط‌های کاری"
+    ),
+    TECHNICAL(
+        "technical",
+        "فنی و تخصصی",
+        "Technical / Engineering",
+        "حفظ اصطلاحات تخصصی و تکنولوژی با ترجمه دقیق مهندسی"
+    );
+
+    companion object {
+        fun fromId(id: String): DubTone {
+            return entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: COLLOQUIAL
+        }
+    }
+}
+
 data class GeminiVoice(
     val id: String,
     val displayName: String,
@@ -54,6 +86,7 @@ object GeminiConstants {
 
 data class DubSettings(
     val apiKey: String = "",
+    val fallbackApiKeys: List<String> = emptyList(),
     val targetLanguage: DubLanguage = DubLanguage.PERSIAN,
     val sourceLanguage: String = "auto",
     val voice: GeminiVoice = GeminiVoice.AOEDE,
@@ -61,5 +94,13 @@ data class DubSettings(
     val audioSource: AudioSourceType = AudioSourceType.MIC,
     val appTheme: String = "dark",
     val appLanguage: String = "fa",
-    val dubVolumeRatio: Float = 0.85f
+    val dubVolumeRatio: Float = 0.85f,
+    val enableFloatingOverlay: Boolean = true,
+    val enableSubtitles: Boolean = true,
+    val dubTone: DubTone = DubTone.COLLOQUIAL,
+    val enableAec: Boolean = true,
+    val silenceSuppression: Boolean = true,
+    val proxyType: String = "NONE", // NONE, HTTP, SOCKS
+    val proxyHost: String = "",
+    val proxyPort: Int = 0
 )

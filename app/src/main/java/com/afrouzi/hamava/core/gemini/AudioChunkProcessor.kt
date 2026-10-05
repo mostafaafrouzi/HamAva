@@ -59,6 +59,31 @@ class AudioChunkProcessor(
         return audioChunks
     }
 
+    /**
+     * Extracts text translation / transcription parts from incoming Gemini server JSON message.
+     */
+    fun extractTextFromResponse(jsonText: String): String? {
+        try {
+            val message = gson.fromJson(jsonText, GeminiServerMessage::class.java)
+            val parts = message.serverContent?.modelTurn?.parts
+            if (parts != null) {
+                val sb = StringBuilder()
+                for (part in parts) {
+                    val txt = part.text
+                    if (!txt.isNullOrBlank()) {
+                        sb.append(txt).append(" ")
+                    }
+                }
+                if (sb.isNotEmpty()) {
+                    return sb.toString().trim()
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+        return null
+    }
+
     private fun decodeBase64Safe(raw: String): ByteArray {
         val sanitized = raw.replace("\n", "").replace("\r", "").replace(" ", "").trim()
         return try {

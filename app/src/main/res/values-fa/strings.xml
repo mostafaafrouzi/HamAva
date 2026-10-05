@@ -26,7 +26,11 @@
     <string name="latency_ms">%d میلی‌ثانیه</string>
     <string name="no_api_key_banner">کلید API جمینای تنظیم نشده است. جهت وارد کردن کلید اینجا ضربه بزنید.</string>
     <string name="system_audio_warning">دوبله صدای سیستم از برنامه‌های پشتیبانی‌شده در اندروید ۱۰ به بالا صدا را دریافت می‌کند. برنامه‌های محافظت‌شده (مثل نتفلیکس و اسپاتیفای) اجازه ضبط نمی‌دهند.</string>
-    
+    <string name="overlay_banner">جهت نمایش دکمه کنترل شناور روی سایر برنامه‌ها هنگام تماشای ویدیو، مجوز را صادر کنید.</string>
+    <string name="overlay_grant_btn">فعال‌سازی مجوز</string>
+    <string name="live_subtitles_label">زیرنویس همزمان فارسی</string>
+    <string name="dub_tone_label">لحن ترجمه و دوبله</string>
+
     <!-- Settings Screen -->
     <string name="settings_title">تنظیمات</string>
     <string name="api_key_title">کلید اختصاصی Gemini API</string>
@@ -40,10 +44,46 @@
     <string name="connection_failed">خطا در اتصال. لطفاً صحت کلید API را بررسی فرمایید.</string>
     <string name="save_settings">ذخیره تنظیمات</string>
     <string name="settings_saved">تنظیمات با موفقیت ذخیره شد</string>
+    
+    <!-- Multi API Keys -->
+    <string name="fallback_keys_title">کلیدهای پشتیبان API (جلوگیری از اتمام سهمیه)</string>
+    <string name="fallback_keys_hint">کلیدهای اضافی (هر کلید در یک خط)</string>
+    <string name="fallback_keys_desc">در صورت بروز خطای محدودیت سهمیه (429 Too Many Requests)، برنامه بلافاصله بدون توقف دوبله به کلید بعدی سوئیچ می‌کند.</string>
+
+    <!-- Gemini Model & Voice -->
     <string name="gemini_model_title">مدل جمینای (Gemini Model)</string>
     <string name="gemini_model_subtitle">مدل بلادرنگ دوسویه صوتی</string>
     <string name="voice_selection_title">شخصیت و لحن صدا</string>
     <string name="voice_selection_subtitle">صدای پیش‌ساخته گوینده جمینای</string>
+
+    <!-- Tone & Subtitles & Overlay -->
+    <string name="features_title">قابلیت‌های دوبله و ابزارها</string>
+    <string name="overlay_title">حباب کنترل شناور (Floating Bubble)</string>
+    <string name="overlay_desc">نمایش دکمه و پنل کنترل شناور روی یوتیوب، تیک‌تاک و سایر برنامه‌ها</string>
+    <string name="subtitles_title">زیرنویس زنده همزمان</string>
+    <string name="subtitles_desc">نمایش متن ترجمه‌شده گفتار همگام با صدای دوبله</string>
+    <string name="dub_tone_title">لحن ترجمه</string>
+    <string name="dub_tone_desc">تنظیم ادبیات و لحن صحبت گوینده فارسی</string>
+
+    <!-- Audio Engineering -->
+    <string name="audio_eng_title">مهندسی صدا و بهینه‌سازی</string>
+    <string name="aec_title">حذف اکو و نویز سخت‌افزاری (AEC)</string>
+    <string name="aec_desc">جلوگیری از ضبط مجدد صدای دوبله توسط میکروفون گوشی</string>
+    <string name="silence_suppression_title">حذف خودکار سکوت (کاهش مصرف اینترنت)</string>
+    <string name="silence_suppression_desc">جلوگیری از ارسال داده‌های صوتی در زمان سکوت ویدیو</string>
+
+    <!-- Proxy / Anti-Sanction -->
+    <string name="proxy_title">پروکسی ضدتحریم و شبکه</string>
+    <string name="proxy_desc">تنظیم پروکسی محلی (SOCKS5 / HTTP مانند v2ray یا Clash) جهت اتصال پایدار و بدون تحریم</string>
+    <string name="proxy_type_label">نوع پروکسی:</string>
+    <string name="proxy_none">غیرفعال (مستقیم)</string>
+    <string name="proxy_socks">SOCKS5</string>
+    <string name="proxy_http">HTTP</string>
+    <string name="proxy_host_hint">آدرس سرور (مثلاً 127.0.0.1)</string>
+    <string name="proxy_port_hint">پورت (مثلاً 10808)</string>
+    <string name="save_proxy">ذخیره تنظیمات پروکسی</string>
+
+    <!-- Appearance -->
     <string name="appearance_title">ظاهر و زبان برنامه</string>
     <string name="theme_title">حالت نمایشی (تم)</string>
     <string name="theme_dark">تاریک (پیش‌فرض)</string>
@@ -98,8 +138,8 @@
     <string name="tile_phone_label">دوبله سیستم همآوا</string>
     
     <!-- Permissions -->
-    <string name="permission_audio_title">دسترسی به میکروفون الزامی است</string>
-    <string name="permission_audio_desc">برای ضبط و دوبله بی‌درنگ صدا، نیاز است دسترسی میکروفون را فعال نمایید.</string>
-    <string name="grant_permission">اعطای دسترسی</string>
-    <string name="permission_denied">دسترسی رد شد. لطفاً از طریق تنظیمات دسترسی لازم را صادر فرمایید.</string>
+    <string name="permission_audio_title">مجوز دسترسی به میکروفون</string>
+    <string name="permission_audio_desc">جهت ضبط صدای محیط و گفتار و ترجمه همزمان، همآوا نیازمند دسترسی به میکروفون دستگاه است.</string>
+    <string name="grant_permission">اعطای مجوز</string>
+    <string name="permission_denied">مجوز صادر نشد. لطفاً در تنظیمات سیستم اجازه دسترسی را فعال فرمایید.</string>
 </resources>

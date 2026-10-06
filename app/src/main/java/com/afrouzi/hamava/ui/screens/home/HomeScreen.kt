@@ -14,10 +14,14 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,17 +32,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.Button
@@ -51,6 +58,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -67,6 +75,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -90,6 +100,16 @@ import com.afrouzi.hamava.ui.theme.DarkSurfaceVariant
 import com.afrouzi.hamava.ui.theme.ErrorColor
 import com.afrouzi.hamava.ui.theme.PrimaryPurple
 import com.afrouzi.hamava.ui.theme.TealActive
+
+// iOS Dark Palette
+private val IosCardBg = Color(0xFF1C1C1E)
+private val IosControlBg = Color(0xFF2C2C2E)
+private val IosSelectedSegment = Color(0xFF3A3A3C)
+private val IosBorder = Color(0xFF38383A)
+private val IosOrange = Color(0xFFFF9F0A)
+private val IosGreen = Color(0xFF34C759)
+private val IosRed = Color(0xFFFF453A)
+private val IosBlue = Color(0xFF0A84FF)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,6 +172,10 @@ fun HomeScreen(
         }
     }
 
+    val isSessionActiveOrPaused = uiState.status == DubStatus.ACTIVE_LISTENING ||
+            uiState.status == DubStatus.ACTIVE_SPEAKING ||
+            uiState.status == DubStatus.PAUSED
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -203,7 +227,74 @@ fun HomeScreen(
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // iOS Dynamic Island Status Capsule
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 14.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(IosControlBg)
+                    .border(1.dp, IosBorder, RoundedCornerShape(26.dp))
+                    .padding(horizontal = 16.dp, vertical = 9.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val statusDotColor by animateColorAsState(
+                            targetValue = when (uiState.status) {
+                                DubStatus.ACTIVE_SPEAKING -> IosGreen
+                                DubStatus.ACTIVE_LISTENING -> TealActive
+                                DubStatus.PAUSED -> IosOrange
+                                DubStatus.ERROR -> IosRed
+                                DubStatus.CONNECTING -> IosBlue
+                                else -> Color(0xFF8E8E93)
+                            },
+                            label = "statusDotColor"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(statusDotColor)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = when (uiState.status) {
+                                DubStatus.ACTIVE_SPEAKING -> stringResource(R.string.status_speaking)
+                                DubStatus.ACTIVE_LISTENING -> stringResource(R.string.status_listening)
+                                DubStatus.PAUSED -> stringResource(R.string.status_paused)
+                                DubStatus.CONNECTING -> stringResource(R.string.status_connecting)
+                                DubStatus.ERROR -> stringResource(R.string.status_error)
+                                else -> stringResource(R.string.status_ready)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+
+                    if (uiState.latencyMs > 0 && isSessionActiveOrPaused) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF141416))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "${uiState.latencyMs} ms",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = TealActive
+                            )
+                        }
+                    }
+                }
+            }
 
             // API Key Missing Warning Banner
             AnimatedVisibility(
@@ -216,7 +307,7 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                         .clickable { onNavigateToSettings() },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = ErrorColor.copy(alpha = 0.15f))
                 ) {
                     Row(
@@ -240,7 +331,7 @@ fun HomeScreen(
                 }
             }
 
-            // Floating Overlay Permission Banner (if enabled but not granted)
+            // Floating Overlay Permission Banner
             AnimatedVisibility(
                 visible = uiState.currentSettings.enableFloatingOverlay && !canDrawOverlays && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M,
                 enter = fadeIn(),
@@ -250,7 +341,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 14.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = PrimaryPurple.copy(alpha = 0.15f))
                 ) {
                     Row(
@@ -281,7 +372,7 @@ fun HomeScreen(
                                     context.startActivity(intent)
                                 }
                             },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = TealActive)
                         ) {
                             Text(stringResource(R.string.overlay_grant_btn), color = Color.Black, fontSize = 11.sp)
@@ -290,66 +381,83 @@ fun HomeScreen(
                 }
             }
 
-            // Audio Source Selector (Mic vs System)
-            Row(
+            // iOS-Style Segmented Control for Audio Source (Mic vs System)
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(bottom = 14.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(IosControlBg)
+                    .padding(4.dp)
             ) {
-                FilterChip(
-                    selected = uiState.currentSettings.audioSource == AudioSourceType.MIC,
-                    onClick = { viewModel.selectAudioSource(AudioSourceType.MIC) },
-                    label = { Text(stringResource(R.string.source_mic)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = PrimaryPurple.copy(alpha = 0.25f),
-                        selectedLabelColor = Color.White,
-                        selectedLeadingIconColor = TealActive,
-                        containerColor = DarkSurfaceVariant,
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    // Segment 1: Microphone
+                    val isMic = uiState.currentSettings.audioSource == AudioSourceType.MIC
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(if (isMic) IosSelectedSegment else Color.Transparent)
+                            .clickable { viewModel.selectAudioSource(AudioSourceType.MIC) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = if (isMic) TealActive else Color(0xFF8E8E93),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.source_mic),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isMic) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isMic) Color.White else Color(0xFF8E8E93)
+                            )
+                        }
+                    }
 
-                FilterChip(
-                    selected = uiState.currentSettings.audioSource == AudioSourceType.SYSTEM,
-                    onClick = {
-                        viewModel.selectAudioSource(AudioSourceType.SYSTEM)
-                    },
-                    label = { Text(stringResource(R.string.source_system)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.PhoneAndroid,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = PrimaryPurple.copy(alpha = 0.25f),
-                        selectedLabelColor = Color.White,
-                        selectedLeadingIconColor = TealActive,
-                        containerColor = DarkSurfaceVariant,
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
+                    // Segment 2: System Audio
+                    val isSystem = uiState.currentSettings.audioSource == AudioSourceType.SYSTEM
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(if (isSystem) IosSelectedSegment else Color.Transparent)
+                            .clickable { viewModel.selectAudioSource(AudioSourceType.SYSTEM) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.PhoneAndroid,
+                                contentDescription = null,
+                                tint = if (isSystem) TealActive else Color(0xFF8E8E93),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.source_system),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSystem) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSystem) Color.White else Color(0xFF8E8E93)
+                            )
+                        }
+                    }
+                }
             }
 
-            // Target Language Card
+            // Target Language Card (iOS Inset Grouped Style)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 14.dp)
                     .clickable { showLanguageSheet = true },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = IosCardBg),
+                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(IosBorder))
             ) {
                 Row(
                     modifier = Modifier
@@ -362,7 +470,7 @@ fun HomeScreen(
                         Text(
                             text = stringResource(R.string.target_lang_label),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFF8E8E93)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -379,7 +487,7 @@ fun HomeScreen(
                                 },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = Color.White
                             )
                         }
                     }
@@ -387,7 +495,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = stringResource(R.string.select_language),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = Color(0xFF8E8E93)
                     )
                 }
             }
@@ -396,7 +504,7 @@ fun HomeScreen(
             Text(
                 text = stringResource(R.string.voice_label),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color(0xFF8E8E93),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp)
@@ -411,7 +519,7 @@ fun HomeScreen(
             Text(
                 text = stringResource(R.string.dub_tone_label),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Color(0xFF8E8E93),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp)
@@ -428,11 +536,12 @@ fun HomeScreen(
                         onClick = { viewModel.selectDubTone(tone) },
                         label = { Text(if (isPersian) tone.titleFa else tone.titleEn, fontSize = 11.5.sp) },
                         modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = PrimaryPurple.copy(alpha = 0.25f),
+                            selectedContainerColor = PrimaryPurple.copy(alpha = 0.35f),
                             selectedLabelColor = Color.White,
-                            containerColor = DarkSurfaceVariant,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            containerColor = IosControlBg,
+                            labelColor = Color(0xFF8E8E93)
                         )
                     )
                 }
@@ -445,7 +554,7 @@ fun HomeScreen(
                 rmsLevel = if (uiState.status == DubStatus.ACTIVE_SPEAKING) uiState.outputRms else uiState.inputRms,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 6.dp)
             )
 
             // Live Subtitles Card
@@ -458,10 +567,11 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = IosCardBg),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(IosBorder))
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Subtitles,
@@ -481,7 +591,7 @@ fun HomeScreen(
                                 Text(
                                     text = "● " + stringResource(R.string.status_speaking),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF00E676),
+                                    color = IosGreen,
                                     fontSize = 10.sp
                                 )
                             }
@@ -490,95 +600,152 @@ fun HomeScreen(
                         Text(
                             text = if (uiState.subtitle.isNotBlank()) uiState.subtitle else (if (isPersian) "در انتظار شنیدن و ترجمه گفتار…" else "Listening for speech to translate…"),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = Color.White
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Main Dubbing Button
+            // Main Dubbing Button (Central Controller)
             DubButton(
                 status = uiState.status,
                 onClick = {
-                    val isRunning = uiState.status == DubStatus.ACTIVE_LISTENING ||
-                            uiState.status == DubStatus.ACTIVE_SPEAKING ||
-                            uiState.status == DubStatus.CONNECTING
-                    if (isRunning) {
-                        viewModel.toggleDubbing()
-                    } else {
-                        if (uiState.currentSettings.audioSource == AudioSourceType.SYSTEM) {
-                            if (DubForegroundService.activeMediaProjection != null) {
-                                viewModel.toggleDubbing()
+                    when (uiState.status) {
+                        DubStatus.ACTIVE_LISTENING, DubStatus.ACTIVE_SPEAKING -> {
+                            viewModel.pauseDubbing()
+                        }
+                        DubStatus.PAUSED -> {
+                            viewModel.resumeDubbing()
+                        }
+                        DubStatus.CONNECTING -> {
+                            viewModel.stopDubbing()
+                        }
+                        else -> {
+                            if (uiState.currentSettings.audioSource == AudioSourceType.SYSTEM) {
+                                if (DubForegroundService.activeMediaProjection != null) {
+                                    viewModel.toggleDubbing()
+                                } else {
+                                    onRequestMediaProjection()
+                                }
                             } else {
-                                onRequestMediaProjection()
-                            }
-                        } else {
-                            if (PermissionUtils.hasRecordAudioPermission(context)) {
-                                viewModel.toggleDubbing()
-                            } else {
-                                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                if (PermissionUtils.hasRecordAudioPermission(context)) {
+                                    viewModel.toggleDubbing()
+                                } else {
+                                    audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
                             }
                         }
                     }
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Dubbing Volume Slider
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // When Active or Paused, show Stop Session button
+            AnimatedVisibility(
+                visible = isSessionActiveOrPaused,
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                Text(
-                    text = if (isPersian) "میزان صدای دوبله" else "Dubbing Volume",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "${(uiState.currentSettings.dubVolumeRatio * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TealActive
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(top = 10.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.stopDubbing() },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = IosRed)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.exit_dubbing),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
             }
 
-            Row(
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Original Video Background Volume Card (iOS Style)
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(vertical = 4.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = IosCardBg),
+                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(IosBorder))
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.VolumeDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Slider(
-                    value = uiState.currentSettings.dubVolumeRatio,
-                    onValueChange = { viewModel.updateVolume(it) },
-                    valueRange = 0.1f..1.5f,
-                    modifier = Modifier.weight(1f),
-                    colors = SliderDefaults.colors(
-                        thumbColor = TealActive,
-                        activeTrackColor = TealActive,
-                        inactiveTrackColor = DarkSurfaceVariant
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                    contentDescription = null,
-                    tint = TealActive,
-                    modifier = Modifier.size(20.dp)
-                )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.original_volume_label),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.original_volume_desc),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF8E8E93),
+                                fontSize = 10.5.sp
+                            )
+                        }
+                        Text(
+                            text = "${(uiState.currentSettings.originalAudioVolume * 100).toInt()}%",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = IosBlue
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeDown,
+                            contentDescription = null,
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Slider(
+                            value = uiState.currentSettings.originalAudioVolume,
+                            onValueChange = { viewModel.updateOriginalVolume(it) },
+                            valueRange = 0.0f..1.0f,
+                            modifier = Modifier.weight(1f),
+                            colors = SliderDefaults.colors(
+                                thumbColor = IosBlue,
+                                activeTrackColor = IosBlue,
+                                inactiveTrackColor = IosControlBg
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = null,
+                            tint = IosBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))

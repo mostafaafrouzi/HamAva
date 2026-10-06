@@ -31,7 +31,8 @@ class AudioPlayer(
 
     private var audioTrack: AudioTrack? = null
     private val isPlaying = AtomicBoolean(false)
-    private var volumeRatio: Float = 0.85f
+    private val isPaused = AtomicBoolean(false)
+    private var volumeRatio: Float = 1.0f
 
     private val audioManager = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -69,7 +70,7 @@ class AudioPlayer(
                         .setChannelMask(channelConfig)
                         .build()
                 )
-                .setBufferSizeInBytes(minBufferSize * 4)
+                .setBufferSizeInBytes((minBufferSize * 2).coerceAtLeast(1920))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
 
@@ -80,9 +81,10 @@ class AudioPlayer(
 
             audioTrack?.play()
             isPlaying.set(true)
-            requestDuckingFocus()
+            isPaused.set(false)
+            applyDuckingForOriginalVolume()
             startPlaybackWorker()
-            Log.d("HamAva", "AudioPlayer started and requested AudioFocus ducking")
+            Log.d("HamAva", "AudioPlayer started with optimized low-latency buffer")
             return true
         } catch (e: Exception) {
             onError("AudioTrack exception: ${e.localizedMessage}")
@@ -96,6 +98,7 @@ class AudioPlayer(
         playbackJob = playbackScope.launch {
             for (chunk in playbackChannel) {
                 if (!isPlaying.get() || audioTrack == null) break
+                if (isPaused.get()) continue
                 try {
                     val processedBytes = AudioUtils.applyGain(chunk, chunk.size, volumeRatio)
                     val rms = AudioUtils.calculateRms(processedBytes, processedBytes.size)
@@ -105,6 +108,47 @@ class AudioPlayer(
                     // Ignore track error on teardown
                 }
             }
+        }
+    }
+
+    private var originalVolumeRatio: Float = 0.20f
+
+    fun setOriginalAudioVolume(ratio: Float) {
+        originalVolumeRatio = ratio.coerceIn(0f, 1f)
+        if (isPlaying.get() && !isPaused.get()) {
+            applyDuckingForOriginalVolume()
+        }
+    }
+
+    private fun applyDuckingForOriginalVolume() {
+        if (originalVolumeRatio >= 0.85f) {
+            // User wants original audio loud/normal -> abandon ducking
+            abandonDuckingFocus()
+        } else if (originalVolumeRatio <= 0.05f) {
+            // User wants original audio completely muted -> request exclusive transient focus
+            requestExclusiveFocus()
+        } else {
+            // Standard ducking
+            requestDuckingFocus()
+        }
+    }
+
+    private fun requestExclusiveFocus() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    .build()
+                audioManager?.requestAudioFocus(req)
+                isFocusHeld = true
+            }
+        } catch (e: Exception) {
+            // Ignore
         }
     }
 
@@ -177,13 +221,39 @@ class AudioPlayer(
     }
 
     fun playChunk(pcm24kBytes: ByteArray) {
-        if (!isPlaying.get() || audioTrack == null || pcm24kBytes.size < 64) return
+        if (!isPlaying.get() || isPaused.get() || audioTrack == null || pcm24kBytes.size < 64) return
 
         if (!isFocusHeld) {
-            requestDuckingFocus()
+            applyDuckingForOriginalVolume()
         }
         Log.d("HamAva", "AudioPlayer: enqueuing chunk (${pcm24kBytes.size} bytes)")
         playbackChannel.trySend(pcm24kBytes)
+    }
+
+    fun pause() {
+        if (!isPlaying.get() || isPaused.get()) return
+        Log.d("HamAva", "AudioPlayer: pause")
+        isPaused.set(true)
+        while (playbackChannel.tryReceive().isSuccess) {}
+        abandonDuckingFocus()
+        try {
+            audioTrack?.pause()
+            audioTrack?.flush()
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
+    fun resume() {
+        if (!isPlaying.get() || !isPaused.get()) return
+        Log.d("HamAva", "AudioPlayer: resume")
+        isPaused.set(false)
+        try {
+            audioTrack?.play()
+            applyDuckingForOriginalVolume()
+        } catch (e: Exception) {
+            // Ignore
+        }
     }
 
     fun setVolume(volume: Float) {
@@ -197,6 +267,7 @@ class AudioPlayer(
 
     fun stop() {
         isPlaying.set(false)
+        isPaused.set(false)
         playbackJob?.cancel()
         playbackJob = null
         while (playbackChannel.tryReceive().isSuccess) {}
@@ -213,4 +284,5 @@ class AudioPlayer(
     }
 
     fun isPlaying(): Boolean = isPlaying.get()
+    fun isPaused(): Boolean = isPaused.get()
 }

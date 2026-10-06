@@ -17,11 +17,15 @@ object AudioUtils {
      */
     object BufferPool {
         private val pool5120 = ConcurrentLinkedQueue<ByteArray>()
+        private val pool3200 = ConcurrentLinkedQueue<ByteArray>()
         private val poolMax = 16
 
         fun obtain(size: Int): ByteArray {
             if (size == 5120) {
                 val buf = pool5120.poll()
+                if (buf != null) return buf
+            } else if (size == 3200) {
+                val buf = pool3200.poll()
                 if (buf != null) return buf
             }
             return ByteArray(size)
@@ -30,6 +34,8 @@ object AudioUtils {
         fun recycle(buffer: ByteArray) {
             if (buffer.size == 5120 && pool5120.size < poolMax) {
                 pool5120.offer(buffer)
+            } else if (buffer.size == 3200 && pool3200.size < poolMax) {
+                pool3200.offer(buffer)
             }
         }
     }

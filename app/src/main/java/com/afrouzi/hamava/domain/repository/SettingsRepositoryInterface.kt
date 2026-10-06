@@ -23,6 +23,8 @@ interface SettingsRepositoryInterface {
     suspend fun updateModel(model: String)
     suspend fun updateAudioSource(source: AudioSourceType)
     suspend fun updateDubVolumeRatio(ratio: Float)
+    suspend fun updateOriginalAudioVolume(volume: Float)
+    suspend fun updateLowLatencyMode(enable: Boolean)
     suspend fun updateAppTheme(theme: String)
     suspend fun updateAppLanguage(language: String)
     suspend fun updateEnableFloatingOverlay(enable: Boolean)

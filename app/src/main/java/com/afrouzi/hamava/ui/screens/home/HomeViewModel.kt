@@ -6,6 +6,8 @@
 
 package com.afrouzi.hamava.ui.screens.home
 
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.afrouzi.hamava.data.model.AudioSourceType
@@ -21,6 +23,7 @@ import com.afrouzi.hamava.domain.usecase.StartDubbingUseCase
 import com.afrouzi.hamava.domain.usecase.StopDubbingUseCase
 import com.afrouzi.hamava.service.DubForegroundService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -34,6 +37,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepositoryInterface,
     private val startDubbingUseCase: StartDubbingUseCase,
     private val stopDubbingUseCase: StopDubbingUseCase
@@ -91,19 +95,42 @@ class HomeViewModel @Inject constructor(
 
     fun toggleDubbing() {
         val currentStatus = _uiState.value.status
-        val isRunning = currentStatus == DubStatus.ACTIVE_LISTENING ||
-                currentStatus == DubStatus.ACTIVE_SPEAKING ||
-                currentStatus == DubStatus.CONNECTING
-
-        if (isRunning) {
-            stopDubbingUseCase()
-        } else {
-            val result = startDubbingUseCase()
-            if (result is StartDubbingResult.Failure) {
-                _errorEvents.tryEmit(result.error)
-                _uiState.update { it.copy(error = result.error, status = DubStatus.ERROR) }
+        when (currentStatus) {
+            DubStatus.ACTIVE_LISTENING, DubStatus.ACTIVE_SPEAKING -> {
+                pauseDubbing()
+            }
+            DubStatus.PAUSED -> {
+                resumeDubbing()
+            }
+            DubStatus.CONNECTING -> {
+                stopDubbing()
+            }
+            else -> {
+                val result = startDubbingUseCase()
+                if (result is StartDubbingResult.Failure) {
+                    _errorEvents.tryEmit(result.error)
+                    _uiState.update { it.copy(error = result.error, status = DubStatus.ERROR) }
+                }
             }
         }
+    }
+
+    fun pauseDubbing() {
+        val intent = Intent(context, DubForegroundService::class.java).apply {
+            action = DubForegroundService.ACTION_PAUSE
+        }
+        context.startService(intent)
+    }
+
+    fun resumeDubbing() {
+        val intent = Intent(context, DubForegroundService::class.java).apply {
+            action = DubForegroundService.ACTION_RESUME
+        }
+        context.startService(intent)
+    }
+
+    fun stopDubbing() {
+        stopDubbingUseCase()
     }
 
     fun selectLanguage(language: DubLanguage) {
@@ -133,6 +160,12 @@ class HomeViewModel @Inject constructor(
     fun toggleFloatingOverlay(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateEnableFloatingOverlay(enabled)
+        }
+    }
+
+    fun updateOriginalVolume(volume: Float) {
+        viewModelScope.launch {
+            settingsRepository.updateOriginalAudioVolume(volume)
         }
     }
 

@@ -147,6 +147,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun toggleLowLatencyMode(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateLowLatencyMode(enabled)
+        }
+    }
+
+    fun updateOriginalVolume(volume: Float) {
+        viewModelScope.launch {
+            settingsRepository.updateOriginalAudioVolume(volume)
+        }
+    }
+
     fun testConnection() {
         val key = _uiState.value.apiKeyInput.trim()
         if (key.isBlank()) {

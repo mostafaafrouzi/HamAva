@@ -39,8 +39,9 @@ import kotlin.math.abs
 
 class FloatingOverlayManager(
     private val context: Context,
-    private val onToggleDubbing: () -> Unit,
-    private val onVolumeChanged: (Float) -> Unit
+    private val onTogglePause: () -> Unit,
+    private val onStopSession: () -> Unit,
+    private val onOriginalVolumeChanged: (Float) -> Unit
 ) {
 
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -57,9 +58,11 @@ class FloatingOverlayManager(
     private var latencyBadge: TextView? = null
     private var subtitleTicker: TextView? = null
     private var playPauseButton: TextView? = null
+    private var stopButton: TextView? = null
     private var volumeSlider: SeekBar? = null
     private var volumePercentText: TextView? = null
 
+    private var currentStatus: DubStatus = DubStatus.IDLE
     private var isExpanded = false
     private var isOverlayVisible = false
 
@@ -73,11 +76,17 @@ class FloatingOverlayManager(
     private var initialTouchY = 0f
     private var isDragging = false
 
+    // iOS Dark Palette
+    private val iosCardBg = Color.parseColor("#1C1C1E")
+    private val iosControlBg = Color.parseColor("#2C2C2E")
+    private val iosSubtleBg = Color.parseColor("#141416")
+    private val iosBorderColor = Color.parseColor("#38383A")
+    private val iosBlue = Color.parseColor("#0A84FF")
+    private val iosGreen = Color.parseColor("#34C759")
+    private val iosOrange = Color.parseColor("#FF9F0A")
+    private val iosRed = Color.parseColor("#FF453A")
     private val tealColor = Color.parseColor("#00D4AA")
     private val purpleColor = Color.parseColor("#6750A4")
-    private val darkSurfaceColor = Color.parseColor("#1C1C2E")
-    private val darkBgColor = Color.parseColor("#0F0F1A")
-    private val cardBorderColor = Color.parseColor("#2D2D44")
 
     init {
         updateScreenDimensions()
@@ -97,6 +106,17 @@ class FloatingOverlayManager(
             dp,
             context.resources.displayMetrics
         ).toInt()
+    }
+
+    private fun createRoundedDrawable(bgColor: Int, cornerRadiusPx: Float, strokeColor: Int? = null, strokeWidthPx: Int = 0): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = cornerRadiusPx
+            setColor(bgColor)
+            if (strokeColor != null && strokeWidthPx > 0) {
+                setStroke(strokeWidthPx, strokeColor)
+            }
+        }
     }
 
     fun isPermissionGranted(): Boolean {
@@ -172,9 +192,9 @@ class FloatingOverlayManager(
         }
         bubble.addView(bubbleGlowView)
 
-        // Center mic icon
+        // Center mic / play icon
         bubbleIcon = ImageView(context).apply {
-            val iconPad = dpToPx(12f)
+            val iconPad = dpToPx(13f)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
@@ -193,24 +213,24 @@ class FloatingOverlayManager(
         bubbleContainer = bubble
         root.addView(bubble)
 
-        // --- 2. Expanded Control Panel ---
-        val panelWidth = dpToPx(250f)
+        // --- 2. Expanded Control Panel (iOS Style) ---
+        val panelWidth = dpToPx(270f)
         val panel = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             visibility = View.GONE
-            val pad = dpToPx(14f)
+            val pad = dpToPx(16f)
             setPadding(pad, pad, pad, pad)
             layoutParams = FrameLayout.LayoutParams(panelWidth, FrameLayout.LayoutParams.WRAP_CONTENT)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpToPx(16f).toFloat()
-                setColor(darkSurfaceColor)
-                setStroke(dpToPx(1.5f), cardBorderColor)
-            }
+            background = createRoundedDrawable(
+                bgColor = iosCardBg,
+                cornerRadiusPx = dpToPx(22f).toFloat(),
+                strokeColor = iosBorderColor,
+                strokeWidthPx = dpToPx(1.5f)
+            )
         }
 
-        // Header: App name + Close
+        // Header: Dynamic Island Style Capsule + Close Button
         val headerRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -220,24 +240,48 @@ class FloatingOverlayManager(
             )
         }
 
-        val titleText = TextView(context).apply {
-            text = "همآوا • دوبله زنده"
-            setTextColor(tealColor)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        val titleCapsule = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = createRoundedDrawable(iosControlBg, dpToPx(12f).toFloat())
+            val px = dpToPx(10f)
+            val py = dpToPx(4f)
+            setPadding(px, py, px, py)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        headerRow.addView(titleText)
+
+        val brandDot = View(context).apply {
+            val s = dpToPx(8f)
+            layoutParams = LinearLayout.LayoutParams(s, s).apply {
+                leftMargin = dpToPx(6f)
+            }
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(tealColor)
+            }
+        }
+        titleCapsule.addView(brandDot)
+
+        val titleText = TextView(context).apply {
+            text = "هم‌آوا • دوبله زنده"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
+        }
+        titleCapsule.addView(titleText)
+        headerRow.addView(titleCapsule)
 
         val closeBtn = TextView(context).apply {
             text = "✕"
-            setTextColor(Color.LTGRAY)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setTextColor(Color.parseColor("#8E8E93"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             gravity = Gravity.CENTER
-            val hitSize = dpToPx(32f)
-            layoutParams = LinearLayout.LayoutParams(hitSize, hitSize)
+            val hitSize = dpToPx(28f)
+            layoutParams = LinearLayout.LayoutParams(hitSize, hitSize).apply {
+                rightMargin = dpToPx(6f)
+            }
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#25FFFFFF"))
+                setColor(iosControlBg)
             }
             setOnClickListener { collapseToBubble() }
         }
@@ -248,7 +292,7 @@ class FloatingOverlayManager(
         val statusRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            val mTop = dpToPx(8f)
+            val mTop = dpToPx(10f)
             setPadding(0, mTop, 0, 0)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -269,23 +313,19 @@ class FloatingOverlayManager(
             setTextColor(tealColor)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             val p = dpToPx(4f)
-            setPadding(dpToPx(6f), p, dpToPx(6f), p)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpToPx(8f).toFloat()
-                setColor(darkBgColor)
-            }
+            setPadding(dpToPx(8f), p, dpToPx(8f), p)
+            background = createRoundedDrawable(iosSubtleBg, dpToPx(8f).toFloat(), iosBorderColor, dpToPx(1f))
         }
         statusRow.addView(latencyBadge)
         panel.addView(statusRow)
 
         // Source & Target Language indicator
         val langRow = TextView(context).apply {
-            val sourceName = if (settings.audioSource == AudioSourceType.MIC) "میکروفون" else "سیستم"
+            val sourceName = if (settings.audioSource == AudioSourceType.MIC) "میکروفون" else "صدای سیستم"
             text = "$sourceName ➔ ${settings.targetLanguage.nameFa}"
-            setTextColor(Color.parseColor("#A0A0C0"))
+            setTextColor(Color.parseColor("#98989F"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            val mTop = dpToPx(6f)
+            val mTop = dpToPx(4f)
             setPadding(0, mTop, 0, 0)
         }
         panel.addView(langRow)
@@ -293,50 +333,47 @@ class FloatingOverlayManager(
         // Subtitle Ticker (if enabled)
         subtitleTicker = TextView(context).apply {
             text = "در انتظار گفتار..."
-            setTextColor(Color.parseColor("#E0E0FF"))
+            setTextColor(Color.parseColor("#F2F2F7"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
             val mTop = dpToPx(8f)
-            setPadding(dpToPx(8f), dpToPx(6f), dpToPx(8f), dpToPx(6f))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpToPx(8f).toFloat()
-                setColor(Color.parseColor("#151528"))
-            }
+            setPadding(dpToPx(10f), dpToPx(6f), dpToPx(10f), dpToPx(6f))
+            background = createRoundedDrawable(iosSubtleBg, dpToPx(10f).toFloat(), iosBorderColor, dpToPx(1f))
             visibility = if (settings.enableSubtitles) View.VISIBLE else View.GONE
         }
         panel.addView(subtitleTicker)
 
-        // Volume row
+        // Original Volume row (صدای ویدیوی پس‌زمینه)
         val volHeaderRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            val mTop = dpToPx(8f)
+            gravity = Gravity.CENTER_VERTICAL
+            val mTop = dpToPx(10f)
             setPadding(0, mTop, 0, 0)
         }
         val volLabel = TextView(context).apply {
-            text = "صدای دوبله:"
-            setTextColor(Color.LTGRAY)
+            text = "بلندی صدای ویدیو (اصلی):"
+            setTextColor(Color.parseColor("#E5E5EA"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         volHeaderRow.addView(volLabel)
 
         volumePercentText = TextView(context).apply {
-            text = "${(settings.dubVolumeRatio * 100).toInt()}%"
-            setTextColor(tealColor)
+            text = "${(settings.originalAudioVolume * 100).toInt()}%"
+            setTextColor(iosBlue)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
         }
         volHeaderRow.addView(volumePercentText)
         panel.addView(volHeaderRow)
 
         volumeSlider = SeekBar(context).apply {
-            max = 150
-            progress = (settings.dubVolumeRatio * 100).toInt().coerceIn(10, 150)
+            max = 100
+            progress = (settings.originalAudioVolume * 100).toInt().coerceIn(0, 100)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     if (fromUser) {
                         val ratio = progress / 100f
                         volumePercentText?.text = "$progress%"
-                        onVolumeChanged(ratio)
+                        onOriginalVolumeChanged(ratio)
                     }
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -345,51 +382,62 @@ class FloatingOverlayManager(
         }
         panel.addView(volumeSlider)
 
-        // Bottom action buttons: Toggle Dubbing + Open App
+        // Dual Action Controls: Pause/Resume Toggle + Full Stop
         val actionRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            val mTop = dpToPx(10f)
+            val mTop = dpToPx(12f)
             setPadding(0, mTop, 0, 0)
         }
 
         playPauseButton = TextView(context).apply {
-            text = "توقف"
+            text = "⏸ توقف موقت"
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             val p = dpToPx(8f)
             setPadding(p, p, p, p)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpToPx(10f).toFloat()
-                setColor(purpleColor)
-            }
+            background = createRoundedDrawable(iosOrange, dpToPx(12f).toFloat())
             setOnClickListener {
-                onToggleDubbing()
+                onTogglePause()
             }
         }
         actionRow.addView(playPauseButton)
 
-        val spacer = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dpToPx(8f), 1)
+        val spacer1 = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(6f), 1)
         }
-        actionRow.addView(spacer)
+        actionRow.addView(spacer1)
 
-        val openAppBtn = TextView(context).apply {
-            text = "برنامه"
-            setTextColor(tealColor)
+        stopButton = TextView(context).apply {
+            text = "✕ خروج"
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             val p = dpToPx(8f)
             setPadding(p, p, p, p)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dpToPx(10f).toFloat()
-                setColor(darkBgColor)
-                setStroke(dpToPx(1f), tealColor)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.9f)
+            background = createRoundedDrawable(iosRed, dpToPx(12f).toFloat())
+            setOnClickListener {
+                onStopSession()
             }
+        }
+        actionRow.addView(stopButton)
+
+        val spacer2 = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(6f), 1)
+        }
+        actionRow.addView(spacer2)
+
+        val openAppBtn = TextView(context).apply {
+            text = "برنامه"
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            val p = dpToPx(8f)
+            setPadding(p, p, p, p)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.9f)
+            background = createRoundedDrawable(iosControlBg, dpToPx(12f).toFloat(), iosBorderColor, dpToPx(1f))
             setOnClickListener {
                 val intent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
@@ -467,7 +515,7 @@ class FloatingOverlayManager(
         panelContainer?.visibility = View.VISIBLE
 
         layoutParams?.let { params ->
-            params.x = (screenWidth - dpToPx(260f)).coerceAtLeast(dpToPx(16f)) / 2
+            params.x = (screenWidth - dpToPx(270f)).coerceAtLeast(dpToPx(16f)) / 2
             windowManager.updateViewLayout(overlayRootView, params)
         }
     }
@@ -485,25 +533,37 @@ class FloatingOverlayManager(
     }
 
     fun updateStatus(status: DubStatus) {
+        currentStatus = status
         mainHandler.post {
             val (text, color) = when (status) {
                 DubStatus.IDLE -> "● آماده" to Color.LTGRAY
                 DubStatus.CONNECTING -> "● در حال اتصال..." to tealColor
                 DubStatus.ACTIVE_LISTENING -> "● در حال شنیدن..." to tealColor
-                DubStatus.ACTIVE_SPEAKING -> "● در حال دوبله..." to Color.parseColor("#4CAF50")
-                DubStatus.ERROR -> "● خطا در اتصال" to Color.parseColor("#CF6679")
-                DubStatus.PAUSED -> "● متوقف" to Color.YELLOW
+                DubStatus.ACTIVE_SPEAKING -> "● در حال دوبله..." to iosGreen
+                DubStatus.ERROR -> "● خطا در اتصال" to iosRed
+                DubStatus.PAUSED -> "⏸ موقتاً متوقف" to iosOrange
             }
 
             statusBadge?.text = text
             statusBadge?.setTextColor(color)
 
-            playPauseButton?.text = if (status == DubStatus.IDLE || status == DubStatus.ERROR) "شروع" else "توقف"
-
-            // Glow ring animation when speaking
-            (bubbleGlowView?.background as? GradientDrawable)?.apply {
-                val strokeColor = if (status == DubStatus.ACTIVE_SPEAKING) Color.parseColor("#00FFAA") else tealColor
-                setStroke(dpToPx(2.5f), strokeColor)
+            if (status == DubStatus.PAUSED) {
+                playPauseButton?.text = "▶ ادامه دوبله"
+                playPauseButton?.background = createRoundedDrawable(iosGreen, dpToPx(12f).toFloat())
+                bubbleIcon?.setImageResource(R.drawable.ic_play_arrow)
+                (bubbleGlowView?.background as? GradientDrawable)?.apply {
+                    setColor(Color.parseColor("#3A2E1C"))
+                    setStroke(dpToPx(2.5f), iosOrange)
+                }
+            } else {
+                playPauseButton?.text = "⏸ توقف موقت"
+                playPauseButton?.background = createRoundedDrawable(iosOrange, dpToPx(12f).toFloat())
+                bubbleIcon?.setImageResource(R.drawable.ic_tile_mic)
+                (bubbleGlowView?.background as? GradientDrawable)?.apply {
+                    setColor(purpleColor)
+                    val strokeColor = if (status == DubStatus.ACTIVE_SPEAKING) iosGreen else tealColor
+                    setStroke(dpToPx(2.5f), strokeColor)
+                }
             }
         }
     }

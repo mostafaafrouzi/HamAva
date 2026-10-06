@@ -80,8 +80,13 @@ object GeminiConstants {
 
     const val SAMPLE_RATE_IN = 16000
     const val SAMPLE_RATE_OUT = 24000
-    const val CHUNK_MS = 160
-    const val CHUNK_BYTES = (SAMPLE_RATE_IN * 2 * CHUNK_MS) / 1000 // 5120 bytes for 160ms 16kHz 16-bit mono
+    const val CHUNK_MS_NORMAL = 160
+    const val CHUNK_MS_LOW_LATENCY = 100 // 100ms ultra low latency streaming
+    const val CHUNK_BYTES_NORMAL = (SAMPLE_RATE_IN * 2 * CHUNK_MS_NORMAL) / 1000 // 5120 bytes
+    const val CHUNK_BYTES_LOW_LATENCY = (SAMPLE_RATE_IN * 2 * CHUNK_MS_LOW_LATENCY) / 1000 // 3200 bytes
+
+    const val CHUNK_MS = CHUNK_MS_LOW_LATENCY
+    const val CHUNK_BYTES = CHUNK_BYTES_LOW_LATENCY
 }
 
 data class DubSettings(
@@ -94,7 +99,9 @@ data class DubSettings(
     val audioSource: AudioSourceType = AudioSourceType.MIC,
     val appTheme: String = "dark",
     val appLanguage: String = "fa",
-    val dubVolumeRatio: Float = 0.85f,
+    val dubVolumeRatio: Float = 1.0f,
+    val originalAudioVolume: Float = 0.20f,
+    val lowLatencyMode: Boolean = true,
     val enableFloatingOverlay: Boolean = true,
     val enableSubtitles: Boolean = true,
     val dubTone: DubTone = DubTone.COLLOQUIAL,

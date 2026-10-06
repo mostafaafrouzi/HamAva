@@ -92,7 +92,9 @@ class SettingsRepository @Inject constructor(
         val audioSourceStr = generalPrefs.getString(KEY_AUDIO_SOURCE, AudioSourceType.MIC.name) ?: AudioSourceType.MIC.name
         val appTheme = generalPrefs.getString(KEY_APP_THEME, "dark") ?: "dark"
         val appLang = generalPrefs.getString(KEY_APP_LANG, "fa") ?: "fa"
-        val dubVolume = generalPrefs.getFloat(KEY_DUB_VOLUME, 0.85f)
+        val dubVolume = generalPrefs.getFloat(KEY_DUB_VOLUME, 1.0f)
+        val originalVolume = generalPrefs.getFloat(KEY_ORIGINAL_AUDIO_VOLUME, 0.20f)
+        val lowLatency = generalPrefs.getBoolean(KEY_LOW_LATENCY_MODE, true)
         val enableOverlay = generalPrefs.getBoolean(KEY_ENABLE_FLOATING_OVERLAY, true)
         val enableSubtitles = generalPrefs.getBoolean(KEY_ENABLE_SUBTITLES, true)
         val toneId = generalPrefs.getString(KEY_DUB_TONE, DubTone.COLLOQUIAL.id) ?: DubTone.COLLOQUIAL.id
@@ -119,6 +121,8 @@ class SettingsRepository @Inject constructor(
             appTheme = appTheme,
             appLanguage = appLang,
             dubVolumeRatio = dubVolume,
+            originalAudioVolume = originalVolume,
+            lowLatencyMode = lowLatency,
             enableFloatingOverlay = enableOverlay,
             enableSubtitles = enableSubtitles,
             dubTone = DubTone.fromId(toneId),
@@ -216,6 +220,16 @@ class SettingsRepository @Inject constructor(
         )
     }
 
+    override suspend fun updateOriginalAudioVolume(volume: Float) = withContext(ioDispatcher) {
+        generalPrefs.edit().putFloat(KEY_ORIGINAL_AUDIO_VOLUME, volume).apply()
+        _settingsFlow.value = _settingsFlow.value.copy(originalAudioVolume = volume)
+    }
+
+    override suspend fun updateLowLatencyMode(enable: Boolean) = withContext(ioDispatcher) {
+        generalPrefs.edit().putBoolean(KEY_LOW_LATENCY_MODE, enable).apply()
+        _settingsFlow.value = _settingsFlow.value.copy(lowLatencyMode = enable)
+    }
+
     companion object {
         private const val KEY_API_KEY = "gemini_api_key"
         private const val KEY_FALLBACK_KEYS = "gemini_fallback_keys"
@@ -226,6 +240,8 @@ class SettingsRepository @Inject constructor(
         private const val KEY_APP_THEME = "app_theme"
         private const val KEY_APP_LANG = "app_language"
         private const val KEY_DUB_VOLUME = "dub_volume"
+        private const val KEY_ORIGINAL_AUDIO_VOLUME = "original_audio_volume"
+        private const val KEY_LOW_LATENCY_MODE = "low_latency_mode"
         private const val KEY_ENABLE_FLOATING_OVERLAY = "enable_floating_overlay"
         private const val KEY_ENABLE_SUBTITLES = "enable_subtitles"
         private const val KEY_DUB_TONE = "dub_tone"

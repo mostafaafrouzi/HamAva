@@ -291,10 +291,14 @@ class GeminiLiveSession(
             DubTone.TECHNICAL -> "Use professional technical Persian. Keep key technical, engineering, software, and AI terms in English or industry standard terms. Do not over-translate specialized terms."
         }
 
+        val lowLatencyInstruction = if (settings.lowLatencyMode) {
+            " CRITICAL REAL-TIME STREAMING: Translate incrementally with the lowest possible latency. Do not wait for complete sentences; stream short translated phrases continuously as the speech arrives. Speak briskly and fluidly with zero hesitation."
+        } else ""
+
         val prompt = "You are a professional real-time dubbing assistant. " +
                 "You will hear live speech. Immediately translate and speak everything into " +
                 "${settings.targetLanguage.nameEn} (${settings.targetLanguage.nameFa}). " +
-                "$toneInstruction " +
+                "$toneInstruction$lowLatencyInstruction " +
                 "Preserve the emotional tone, cadence, and human feel of the original speaker. " +
                 "Speak ONLY the translated speech. Do not add comments, greetings, or explanations."
 

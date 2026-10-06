@@ -90,18 +90,25 @@ class AudioPipeline(
             return false
         }
         player?.setVolume(settings.dubVolumeRatio)
+        player?.setOriginalAudioVolume(settings.originalAudioVolume)
 
         // 2. Initialize Gemini Live Session
         geminiSession = GeminiLiveSession(
             settings = settings,
             onAudioReceived = { chunk24k ->
-                player?.playChunk(chunk24k)
+                if (!isPaused.get()) {
+                    player?.playChunk(chunk24k)
+                }
             },
             onTextReceived = { text ->
-                _subtitle.value = text
+                if (!isPaused.get()) {
+                    _subtitle.value = text
+                }
             },
             onStatusChanged = { status ->
-                _status.value = status
+                if (!isPaused.get()) {
+                    _status.value = status
+                }
             },
             onLatencyUpdated = { lat ->
                 _latency.value = lat
@@ -158,7 +165,10 @@ class AudioPipeline(
         return true
     }
 
+    private val isPaused = AtomicBoolean(false)
+
     private fun handleAudioChunk(chunk: ByteArray, length: Int, rms: Float) {
+        if (isPaused.get()) return
         _inputRms.value = rms
         if (settings.silenceSuppression) {
             val isVoice = AudioUtils.isVoiceActive(rms, threshold = 0.0035f)
@@ -175,6 +185,29 @@ class AudioPipeline(
         geminiSession?.sendAudioChunk(chunk, length, rms)
     }
 
+    fun pause() {
+        if (!isRunning.get() || isPaused.get()) return
+        Log.d("HamAva", "AudioPipeline: Pausing dubbing session")
+        isPaused.set(true)
+        player?.pause()
+        _status.value = DubStatus.PAUSED
+        _inputRms.value = 0f
+        _outputRms.value = 0f
+    }
+
+    fun resume() {
+        if (!isRunning.get() || !isPaused.get()) return
+        Log.d("HamAva", "AudioPipeline: Resuming dubbing session")
+        isPaused.set(false)
+        player?.resume()
+        _status.value = DubStatus.ACTIVE_LISTENING
+    }
+
+    fun setOriginalVolume(volume: Float) {
+        settings = settings.copy(originalAudioVolume = volume)
+        player?.setOriginalAudioVolume(volume)
+    }
+
     fun setVolume(volume: Float) {
         player?.setVolume(volume)
     }
@@ -187,6 +220,7 @@ class AudioPipeline(
 
     fun stop() {
         isRunning.set(false)
+        isPaused.set(false)
         micCapture?.stop()
         micCapture = null
 
@@ -206,5 +240,6 @@ class AudioPipeline(
         silentFramesCount = 0
     }
 
-    fun isActive(): Boolean = isRunning.get()
+    fun isActive(): Boolean = isRunning.get() && !isPaused.get()
+    fun isPaused(): Boolean = isPaused.get()
 }

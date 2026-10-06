@@ -31,26 +31,27 @@ Built to overcome the limitations of proprietary tools like Livdub, HamAva requi
 - 🎙️ **Dual Audio Input Modes:**
   - **Microphone Mode:** Live dubbing for conversations, lectures, meetings, and classes.
   - **Internal System Audio Mode:** High-fidelity internal audio capture via Android 10+ `AudioPlaybackCapture` without ambient room noise.
-- 🪟 **Floating Control Bubble Overlay:** Floating bubble widget with spring snap-to-edge animation and a modern glassmorphic control card to adjust volume, view live latency, read subtitles, and pause/resume dubbing while watching videos in other apps.
+- 🪟 **iOS-Inspired Floating Overlay:** Floating bubble widget with snap-to-edge animation, dedicated in-place **Pause** and **Resume** buttons (no need to re-prompt for screen capture permissions), full exit control, and background video volume control over apps like YouTube and TikTok.
+- 🔊 **Original Video / Background Volume Control:** Intelligent audio ducking and volume slider (0% to 100%) allows lowering, muting, or adjusting the original foreign language audio so that the Persian dubbing is heard crystal clear.
+- ⚡ **Ultra-Low Latency Mode:** 100ms chunk processing, 3200-byte zero-allocation buffer pool, minimal AudioTrack buffer, and incremental streaming prompt optimization for the lowest possible real-time dubbing delay.
 - 🎭 **Tailored Dubbing Tones:** Choose between **Colloquial** (conversational everyday speech for movies & social media), **Formal** (refined academic speech for lectures and news), and **Technical** (preserves specialized engineering terminology).
 - 💬 **Real-Time Synchronized Subtitles:** Simultaneous live text subtitle stream rendered alongside the synthesized audio in the main UI and overlay.
 - 🔄 **Multi-API Key Rotation & Failover:** Store backup API keys; automatically recovers and switches keys upon HTTP 429 quota exhaustion without interrupting playback.
 - 🛡️ **Anti-Sanction Local Proxy (SOCKS5 / HTTP):** Direct WebSocket routing via local proxies (e.g., v2ray, Clash) for reliable connections under regional network restrictions.
 - 🎙️ **Hardware Acoustic Echo Cancellation (AEC):** Hardware AEC and Noise Suppressor integration prevents speaker feedback loop into the microphone; zero-allocation BufferPool keeps latency sub-60ms.
-- ⚡ **Ultra-Low Latency Streaming:** 16kHz 16-bit Mono PCM streamed in 160ms chunks over persistent OkHttp WebSockets with bidirectional full-duplex communication.
 - 🌍 **Over 70 Supported Languages:** Full bidirectional dubbing between Persian (fa-IR), English (en-US), Arabic, Turkish, German, French, Russian, Chinese, Japanese, and more.
 - 🗣️ **6 Natural Google AI Voices:** Select between Aoede, Charon, Fenrir, Kore, Puck, and Zephyr.
-- 🎨 **Modern Jetpack Compose UI:**
-  - Designed with **Material Design 3**.
-  - Default sleek Dark Theme.
-  - Native RTL (Right-to-Left) and LTR layout adaptability.
-  - Embedded **IranSansX** typography for Persian and Roboto for Latin.
-  - Real-time animated audio waveforms and haptic feedback.
+- 🎨 **Sleek iOS-Inspired UI/UX Design:**
+  - **Dynamic Island Status Capsule** at the top with live pulsing activity dots and latency badges.
+  - **iOS Segmented Control** for switching between Microphone and System Audio.
+  - Inset grouped cards with frosted glassmorphism borders.
+  - Native RTL and LTR support with **IranSansX** typography.
+  - Real-time animated audio waveforms and dual-action playback controls.
 - 🔒 **End-to-End Privacy & Keystore Security:**
   - API keys stored securely using **AES-256 GCM** encryption via Android Keystore.
   - Zero intermediate servers. All traffic is directly exchanged with Google Generative Language APIs.
 - 🎛️ **Quick Settings Tiles:** Quick toggle tiles in Android notification shade for both microphone and system dubbing.
-- ⚙️ **Persistent Background Service:** Foreground Service with wake lock management for uninterrupted dubbing while using other apps or with screen turned off.
+- ⚙️ **Persistent Background Service:** Foreground Service with notification action controls (Pause, Resume, Exit) for seamless background operation.
 
 ---
 
@@ -58,7 +59,7 @@ Built to overcome the limitations of proprietary tools like Livdub, HamAva requi
 
 | Platform | Link | Status |
 | :--- | :--- | :--- |
-| **GitHub Releases** | [Download APK / AAB](https://github.com/mostafaafrouzi/HamAva/releases/latest) | ✅ v1.2.0 Available |
+| **GitHub Releases** | [Download APK / AAB](https://github.com/mostafaafrouzi/HamAva/releases/latest) | ✅ v1.3.0 Available |
 | **Cafe Bazaar** | [HamAva on Cafe Bazaar](https://cafebazaar.ir/developer/057657612999?utm_source=github&utm_medium=readme_en&utm_campaign=hamava) | ⏳ Reviewing |
 | **Google Play** | Google Play Store link | ⏳ Coming Soon |
 

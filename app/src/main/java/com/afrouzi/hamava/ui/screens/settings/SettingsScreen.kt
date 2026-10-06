@@ -549,6 +549,32 @@ fun SettingsScreen(
                             colors = SwitchDefaults.colors(checkedThumbColor = TealActive)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Low Latency Mode
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.low_latency_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = stringResource(R.string.low_latency_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = uiState.settings.lowLatencyMode,
+                            onCheckedChange = { viewModel.toggleLowLatencyMode(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = TealActive)
+                        )
+                    }
                 }
             }
 

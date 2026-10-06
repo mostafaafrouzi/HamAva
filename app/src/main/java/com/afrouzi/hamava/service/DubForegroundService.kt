@@ -85,6 +85,12 @@ class DubForegroundService : Service() {
                 stopDubbingSession()
                 stopSelf()
             }
+            ACTION_PAUSE -> {
+                pauseDubbingSession()
+            }
+            ACTION_RESUME -> {
+                resumeDubbingSession()
+            }
             ACTION_TOGGLE -> {
                 if (_isServiceRunning.value) {
                     stopDubbingSession()
@@ -136,16 +142,21 @@ class DubForegroundService : Service() {
                 floatingOverlay?.hide()
                 floatingOverlay = FloatingOverlayManager(
                     context = applicationContext,
-                    onToggleDubbing = {
-                        if (_isServiceRunning.value) {
-                            stopDubbingSession()
-                            stopSelf()
+                    onTogglePause = {
+                        if (_statusFlow.value == DubStatus.PAUSED) {
+                            resumeDubbingSession()
+                        } else {
+                            pauseDubbingSession()
                         }
                     },
-                    onVolumeChanged = { ratio ->
-                        audioPipeline?.setVolume(ratio)
+                    onStopSession = {
+                        stopDubbingSession()
+                        stopSelf()
+                    },
+                    onOriginalVolumeChanged = { volume ->
+                        audioPipeline?.setOriginalVolume(volume)
                         serviceScope.launch {
-                            settingsRepository.updateDubVolumeRatio(ratio)
+                            settingsRepository.updateOriginalAudioVolume(volume)
                         }
                     }
                 )
@@ -242,6 +253,24 @@ class DubForegroundService : Service() {
         audioPipeline?.start()
     }
 
+    private fun pauseDubbingSession() {
+        Log.d("HamAva", "pauseDubbingSession called")
+        audioPipeline?.pause()
+        _statusFlow.value = DubStatus.PAUSED
+        floatingOverlay?.updateStatus(DubStatus.PAUSED)
+        val settings = settingsRepository.getSettingsSnapshot()
+        updateNotificationForStatus(DubStatus.PAUSED, settings)
+    }
+
+    private fun resumeDubbingSession() {
+        Log.d("HamAva", "resumeDubbingSession called")
+        audioPipeline?.resume()
+        _statusFlow.value = DubStatus.ACTIVE_LISTENING
+        floatingOverlay?.updateStatus(DubStatus.ACTIVE_LISTENING)
+        val settings = settingsRepository.getSettingsSnapshot()
+        updateNotificationForStatus(DubStatus.ACTIVE_LISTENING, settings)
+    }
+
     private fun stopDubbingSession() {
         Log.d("HamAva", "stopDubbingSession called")
         audioPipeline?.stop()
@@ -285,11 +314,11 @@ class DubForegroundService : Service() {
             DubStatus.ACTIVE_LISTENING -> res.getString(R.string.status_listening)
             DubStatus.ACTIVE_SPEAKING -> res.getString(R.string.status_speaking)
             DubStatus.ERROR -> res.getString(R.string.status_error)
-            else -> res.getString(R.string.status_ready)
+            DubStatus.PAUSED -> res.getString(R.string.status_paused)
         }
         val source = if (settings.audioSource == AudioSourceType.MIC) res.getString(R.string.source_mic) else res.getString(R.string.source_system)
         val targetLangName = if (settings.appLanguage == "fa") settings.targetLanguage.nameFa else settings.targetLanguage.nameEn
-        val notification = createNotification(settings, statusText, targetLangName, source)
+        val notification = createNotification(settings, statusText, targetLangName, source, isPaused = (status == DubStatus.PAUSED))
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(HamAvaApplication.NOTIFICATION_ID, notification)
     }
@@ -298,7 +327,8 @@ class DubForegroundService : Service() {
         settings: DubSettings,
         statusText: String,
         targetLang: String,
-        source: String
+        source: String,
+        isPaused: Boolean = false
     ): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -310,6 +340,44 @@ class DubForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val res = getLocalizedResources(settings)
+        val title = res.getString(R.string.notification_title_active)
+        val contentText = String.format(res.getString(R.string.notification_text_active), targetLang, source) + " • " + statusText
+
+        val builder = NotificationCompat.Builder(this, HamAvaApplication.CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(contentText)
+            .setSmallIcon(R.drawable.ic_tile_mic)
+            .setContentIntent(openAppPendingIntent)
+            .setOngoing(!isPaused)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+
+        if (isPaused) {
+            val resumeIntent = Intent(this, DubForegroundService::class.java).apply {
+                action = ACTION_RESUME
+            }
+            val resumePendingIntent = PendingIntent.getService(
+                this,
+                2,
+                resumeIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(android.R.drawable.ic_media_play, res.getString(R.string.resume_dubbing), resumePendingIntent)
+        } else {
+            val pauseIntent = Intent(this, DubForegroundService::class.java).apply {
+                action = ACTION_PAUSE
+            }
+            val pausePendingIntent = PendingIntent.getService(
+                this,
+                3,
+                pauseIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(android.R.drawable.ic_media_pause, res.getString(R.string.pause_dubbing), pausePendingIntent)
+        }
+
         val stopIntent = Intent(this, DubForegroundService::class.java).apply {
             action = ACTION_STOP
         }
@@ -319,23 +387,9 @@ class DubForegroundService : Service() {
             stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, res.getString(R.string.exit_dubbing), stopPendingIntent)
 
-        val res = getLocalizedResources(settings)
-        val stopActionText = res.getString(R.string.action_stop)
-        val title = res.getString(R.string.notification_title_active)
-        val contentText = String.format(res.getString(R.string.notification_text_active), targetLang, source) + " • " + statusText
-
-        return NotificationCompat.Builder(this, HamAvaApplication.CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(contentText)
-            .setSmallIcon(R.drawable.ic_tile_mic)
-            .setContentIntent(openAppPendingIntent)
-            .addAction(android.R.drawable.ic_media_pause, stopActionText, stopPendingIntent)
-            .setOngoing(true)
-            .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
+        return builder.build()
     }
 
     override fun onDestroy() {
@@ -346,6 +400,8 @@ class DubForegroundService : Service() {
     companion object {
         const val ACTION_START = "com.afrouzi.hamava.action.START"
         const val ACTION_STOP = "com.afrouzi.hamava.action.STOP"
+        const val ACTION_PAUSE = "com.afrouzi.hamava.action.PAUSE"
+        const val ACTION_RESUME = "com.afrouzi.hamava.action.RESUME"
         const val ACTION_TOGGLE = "com.afrouzi.hamava.action.TOGGLE"
 
         const val EXTRA_RESULT_CODE = "extra_result_code"

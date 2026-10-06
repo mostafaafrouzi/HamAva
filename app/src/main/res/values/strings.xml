@@ -15,6 +15,9 @@
     <string name="voice_label">Dubbing Voice</string>
     <string name="start_dubbing">Start Dubbing</string>
     <string name="stop_dubbing">Stop Dubbing</string>
+    <string name="pause_dubbing">Pause</string>
+    <string name="resume_dubbing">Resume</string>
+    <string name="exit_dubbing">Exit</string>
     <string name="status_ready">Ready</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_active">Live Dubbing Active</string>
@@ -22,6 +25,10 @@
     <string name="status_speaking">Playing dubbed audio…</string>
     <string name="status_error">Connection Error</string>
     <string name="status_paused">Paused</string>
+    <string name="original_volume_label">Original Video Volume (Background)</string>
+    <string name="original_volume_desc">Lower or mute original language audio so Persian dubbing is heard clearly</string>
+    <string name="low_latency_title">Ultra-low Latency Mode</string>
+    <string name="low_latency_desc">Reduces buffer chunks to 100ms for minimum real-time live dubbing latency</string>
     <string name="latency_label">Latency</string>
     <string name="latency_ms">%d ms</string>
     <string name="no_api_key_banner">Gemini API key is required. Tap here to configure.</string>

@@ -25,12 +25,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -60,6 +61,7 @@ fun DubButton(
 ) {
     val isActive = status == DubStatus.ACTIVE_LISTENING || status == DubStatus.ACTIVE_SPEAKING
     val isConnecting = status == DubStatus.CONNECTING
+    val isPaused = status == DubStatus.PAUSED
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_transition")
     val pulseScale by infiniteTransition.animateFloat(
@@ -83,6 +85,7 @@ fun DubButton(
 
     val buttonBgColor by animateColorAsState(
         targetValue = when {
+            isPaused -> Color(0xFFFF9F0A)
             isActive -> TealActive
             isConnecting -> PrimaryPurpleDark
             else -> PrimaryPurple
@@ -105,16 +108,19 @@ fun DubButton(
                     onClick = onClick
                 )
         ) {
-            // Outer glowing pulse ring when active
-            if (isActive || isConnecting) {
+            // Outer glowing pulse ring when active or paused
+            if (isActive || isConnecting || isPaused) {
                 Box(
                     modifier = Modifier
                         .size(160.dp)
-                        .scale(pulseScale)
+                        .scale(if (isActive) pulseScale else 1.05f)
                         .clip(CircleShape)
                         .background(
-                            if (isActive) TealActive.copy(alpha = 0.22f)
-                            else PrimaryPurple.copy(alpha = 0.25f)
+                            when {
+                                isPaused -> Color(0xFFFF9F0A).copy(alpha = 0.22f)
+                                isActive -> TealActive.copy(alpha = 0.22f)
+                                else -> PrimaryPurple.copy(alpha = 0.25f)
+                            }
                         )
                 )
             }
@@ -125,7 +131,7 @@ fun DubButton(
                 modifier = Modifier
                     .size(128.dp)
                     .shadow(
-                        elevation = if (isActive) 16.dp else 8.dp,
+                        elevation = if (isActive || isPaused) 16.dp else 8.dp,
                         shape = CircleShape,
                         spotColor = buttonBgColor,
                         ambientColor = buttonBgColor
@@ -133,8 +139,11 @@ fun DubButton(
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
-                            colors = if (isActive) listOf(TealActive, Color(0xFF00A887))
-                            else listOf(PrimaryPurple, PrimaryPurpleDark)
+                            colors = when {
+                                isPaused -> listOf(Color(0xFFFF9F0A), Color(0xFFD47A00))
+                                isActive -> listOf(TealActive, Color(0xFF00A887))
+                                else -> listOf(PrimaryPurple, PrimaryPurpleDark)
+                            }
                         )
                     )
             ) {
@@ -149,12 +158,20 @@ fun DubButton(
                                 .rotate(rotateAngle)
                         )
                     }
+                    isPaused -> {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = stringResource(R.string.resume_dubbing),
+                            tint = Color(0xFF0F0F1A),
+                            modifier = Modifier.size(54.dp)
+                        )
+                    }
                     isActive -> {
                         Icon(
-                            imageVector = if (status == DubStatus.ACTIVE_SPEAKING) Icons.Default.GraphicEq else Icons.Default.Stop,
-                            contentDescription = stringResource(R.string.stop_dubbing),
+                            imageVector = if (status == DubStatus.ACTIVE_SPEAKING) Icons.Default.GraphicEq else Icons.Default.Pause,
+                            contentDescription = stringResource(R.string.pause_dubbing),
                             tint = Color(0xFF0F0F1A),
-                            modifier = Modifier.size(52.dp)
+                            modifier = Modifier.size(50.dp)
                         )
                     }
                     else -> {
@@ -174,12 +191,17 @@ fun DubButton(
         Text(
             text = when {
                 isConnecting -> stringResource(R.string.status_connecting)
-                isActive -> stringResource(R.string.stop_dubbing)
+                isPaused -> stringResource(R.string.resume_dubbing)
+                isActive -> stringResource(R.string.pause_dubbing)
                 else -> stringResource(R.string.start_dubbing)
             },
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isActive) TealActive else MaterialTheme.colorScheme.onBackground,
+            color = when {
+                isPaused -> Color(0xFFFF9F0A)
+                isActive -> TealActive
+                else -> MaterialTheme.colorScheme.onBackground
+            },
             fontSize = 17.sp
         )
     }

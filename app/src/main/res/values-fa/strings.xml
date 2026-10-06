@@ -15,6 +15,9 @@
     <string name="voice_label">صدای گوینده</string>
     <string name="start_dubbing">شروع دوبله زنده</string>
     <string name="stop_dubbing">توقف دوبله</string>
+    <string name="pause_dubbing">توقف موقت</string>
+    <string name="resume_dubbing">ادامه دوبله</string>
+    <string name="exit_dubbing">خروج کامل</string>
     <string name="status_ready">آماده برای شروع</string>
     <string name="status_connecting">در حال اتصال به جمینای…</string>
     <string name="status_active">دوبله زنده فعال است</string>
@@ -22,6 +25,10 @@
     <string name="status_speaking">در حال پخش صدای دوبله…</string>
     <string name="status_error">خطا در برقراری ارتباط</string>
     <string name="status_paused">متوقف موقت</string>
+    <string name="original_volume_label">میزان صدای ویدیوی اصلی (پشت‌زمینه)</string>
+    <string name="original_volume_desc">کاهش یا قطع صدای زبان اصلی جهت شنیده شدن واضح دوبله فارسی</string>
+    <string name="low_latency_title">حالت فوق سریع (تأخیر حداقلی)</string>
+    <string name="low_latency_desc">کاهش اندازه بافر به ۱۰۰ میلی‌ثانیه برای کمترین تأخیر ممکن در دوبله زنده</string>
     <string name="latency_label">تأخیر (Latency)</string>
     <string name="latency_ms">%d میلی‌ثانیه</string>
     <string name="no_api_key_banner">کلید API جمینای تنظیم نشده است. جهت وارد کردن کلید اینجا ضربه بزنید.</string>

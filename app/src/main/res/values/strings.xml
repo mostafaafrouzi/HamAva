@@ -129,8 +129,6 @@
     <string name="cafebazaar_page">Cafe Bazaar Page</string>
     <string name="license_title">Open Source License</string>
     <string name="license_desc">Apache License 2.0</string>
-    <string name="font_license_title">Font License</string>
-    <string name="font_license_desc">IRANSansX (Eco) font under FontIran license</string>
     <string name="privacy_title">Privacy &amp; Security</string>
     <string name="privacy_desc">All audio data is streamed directly to Google Gemini API using your personal API key over encrypted TLS. No audio or user data is ever collected, stored, or sent to any third-party server.</string>
     <string name="version_format">Version %1$s (%2$d)</string>

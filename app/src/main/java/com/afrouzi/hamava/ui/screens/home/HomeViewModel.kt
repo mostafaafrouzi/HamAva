@@ -179,6 +179,18 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(error = null, status = DubStatus.IDLE) }
     }
 
+    fun hasSeenTour(): Boolean = settingsRepository.hasSeenTour()
+
+    fun markTourSeen() {
+        settingsRepository.markTourCompleted()
+    }
+
+    fun updateTheme(theme: String) {
+        viewModelScope.launch {
+            settingsRepository.updateAppTheme(theme)
+        }
+    }
+
     private data class Quad<A, B, C, D>(
         val first: A,
         val second: B,

@@ -40,12 +40,13 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.Button
@@ -53,12 +54,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -76,7 +74,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -88,15 +85,16 @@ import com.afrouzi.hamava.R
 import com.afrouzi.hamava.core.utils.PermissionUtils
 import com.afrouzi.hamava.data.model.AudioSourceType
 import com.afrouzi.hamava.data.model.DubStatus
-import com.afrouzi.hamava.data.model.DubTone
 import com.afrouzi.hamava.service.DubForegroundService
 import com.afrouzi.hamava.ui.components.AudioWaveform
 import com.afrouzi.hamava.ui.components.DubButton
 import com.afrouzi.hamava.ui.components.LanguageSelectorBottomSheet
+import com.afrouzi.hamava.ui.components.OnboardingTourOverlay
 import com.afrouzi.hamava.ui.components.StatusCard
-import com.afrouzi.hamava.ui.components.VoiceSelectorRow
-import com.afrouzi.hamava.ui.theme.DarkSurface
-import com.afrouzi.hamava.ui.theme.DarkSurfaceVariant
+import com.afrouzi.hamava.ui.components.ToneSelectorBottomSheet
+import com.afrouzi.hamava.ui.components.VoiceSelectorBottomSheet
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.text.style.TextOverflow
 import com.afrouzi.hamava.ui.theme.ErrorColor
 import com.afrouzi.hamava.ui.theme.PrimaryPurple
 import com.afrouzi.hamava.ui.theme.TealActive
@@ -125,6 +123,9 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showLanguageSheet by remember { mutableStateOf(false) }
+    var showVoiceSheet by remember { mutableStateOf(false) }
+    var showToneSheet by remember { mutableStateOf(false) }
+    var showTour by remember { mutableStateOf(false) }
 
     // Audio Permission Launcher
     val audioPermissionLauncher = rememberLauncherForActivityResult(
@@ -144,9 +145,25 @@ fun HomeScreen(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+        if (!viewModel.hasSeenTour()) {
+            showTour = true
+        }
     }
 
     val isPersian = uiState.currentSettings.appLanguage == "fa"
+    val isSystemDark = isSystemInDarkTheme()
+    val isDark = when (uiState.currentSettings.appTheme) {
+        "light" -> false
+        "dark" -> true
+        else -> isSystemDark
+    }
+
+    val cardBg = if (isDark) Color(0xFF1C1C1E) else Color(0xFFFFFFFF)
+    val controlBg = if (isDark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
+    val selectedSegment = if (isDark) Color(0xFF3A3A3C) else Color(0xFFFFFFFF)
+    val borderColor = if (isDark) Color(0xFF38383A) else Color(0xFFE5E5EA)
+    val primaryTextColor = if (isDark) Color.White else Color(0xFF1C1C1E)
+    val secondaryTextColor = if (isDark) Color(0xFF8E8E93) else Color(0xFF6C6C70)
 
     LaunchedEffect(Unit) {
         viewModel.errorEvents.collect { err ->
@@ -157,10 +174,33 @@ fun HomeScreen(
     if (showLanguageSheet) {
         LanguageSelectorBottomSheet(
             selectedLanguage = uiState.currentSettings.targetLanguage,
-            onLanguageSelected = { lang ->
-                viewModel.selectLanguage(lang)
-            },
+            onLanguageSelected = { lang -> viewModel.selectLanguage(lang) },
             onDismissRequest = { showLanguageSheet = false }
+        )
+    }
+    if (showVoiceSheet) {
+        VoiceSelectorBottomSheet(
+            selectedVoice = uiState.currentSettings.voice,
+            onVoiceSelected = { voice -> viewModel.selectVoice(voice) },
+            isPersian = isPersian,
+            onDismissRequest = { showVoiceSheet = false }
+        )
+    }
+    if (showToneSheet) {
+        ToneSelectorBottomSheet(
+            selectedTone = uiState.currentSettings.dubTone,
+            onToneSelected = { tone -> viewModel.selectDubTone(tone) },
+            isPersian = isPersian,
+            onDismissRequest = { showToneSheet = false }
+        )
+    }
+    if (showTour) {
+        OnboardingTourOverlay(
+            isPersian = isPersian,
+            onDismiss = {
+                showTour = false
+                viewModel.markTourSeen()
+            }
         )
     }
 
@@ -196,6 +236,17 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    // Theme toggle
+                    IconButton(onClick = {
+                        val newTheme = if (isDark) "light" else "dark"
+                        viewModel.updateTheme(newTheme)
+                    }) {
+                        Icon(
+                            imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = "Toggle Theme",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -235,8 +286,8 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(bottom = 14.dp)
                     .clip(RoundedCornerShape(26.dp))
-                    .background(IosControlBg)
-                    .border(1.dp, IosBorder, RoundedCornerShape(26.dp))
+                    .background(controlBg)
+                    .border(1.dp, borderColor, RoundedCornerShape(26.dp))
                     .padding(horizontal = 16.dp, vertical = 9.dp)
             ) {
                 Row(
@@ -274,7 +325,7 @@ fun HomeScreen(
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            color = primaryTextColor
                         )
                     }
 
@@ -381,51 +432,23 @@ fun HomeScreen(
                 }
             }
 
-            // iOS-Style Segmented Control for Audio Source (Mic vs System)
+            // iOS-Style Segmented Control for Audio Source (System Audio first & default vs Mic)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 14.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(IosControlBg)
+                    .background(controlBg)
                     .padding(4.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    // Segment 1: Microphone
-                    val isMic = uiState.currentSettings.audioSource == AudioSourceType.MIC
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(11.dp))
-                            .background(if (isMic) IosSelectedSegment else Color.Transparent)
-                            .clickable { viewModel.selectAudioSource(AudioSourceType.MIC) }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Mic,
-                                contentDescription = null,
-                                tint = if (isMic) TealActive else Color(0xFF8E8E93),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(R.string.source_mic),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isMic) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isMic) Color.White else Color(0xFF8E8E93)
-                            )
-                        }
-                    }
-
-                    // Segment 2: System Audio
+                    // Segment 1: System Audio (FIRST & DEFAULT)
                     val isSystem = uiState.currentSettings.audioSource == AudioSourceType.SYSTEM
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(11.dp))
-                            .background(if (isSystem) IosSelectedSegment else Color.Transparent)
+                            .background(if (isSystem) selectedSegment else Color.Transparent)
                             .clickable { viewModel.selectAudioSource(AudioSourceType.SYSTEM) }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
@@ -434,7 +457,7 @@ fun HomeScreen(
                             Icon(
                                 imageVector = Icons.Default.PhoneAndroid,
                                 contentDescription = null,
-                                tint = if (isSystem) TealActive else Color(0xFF8E8E93),
+                                tint = if (isSystem) TealActive else secondaryTextColor,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -442,109 +465,90 @@ fun HomeScreen(
                                 text = stringResource(R.string.source_system),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = if (isSystem) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSystem) Color.White else Color(0xFF8E8E93)
+                                color = if (isSystem) primaryTextColor else secondaryTextColor
                             )
                         }
                     }
-                }
-            }
 
-            // Target Language Card (iOS Inset Grouped Style)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 14.dp)
-                    .clickable { showLanguageSheet = true },
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = IosCardBg),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(IosBorder))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.target_lang_label),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF8E8E93)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
+                    // Segment 2: Microphone
+                    val isMic = uiState.currentSettings.audioSource == AudioSourceType.MIC
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(if (isMic) selectedSegment else Color.Transparent)
+                            .clickable { viewModel.selectAudioSource(AudioSourceType.MIC) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = uiState.currentSettings.targetLanguage.flag,
-                                fontSize = 22.sp,
-                                modifier = Modifier.padding(end = 8.dp)
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = if (isMic) TealActive else secondaryTextColor,
+                                modifier = Modifier.size(18.dp)
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isPersian) {
-                                    "${uiState.currentSettings.targetLanguage.nameFa} (${uiState.currentSettings.targetLanguage.nameEn})"
-                                } else {
-                                    "${uiState.currentSettings.targetLanguage.nameEn} (${uiState.currentSettings.targetLanguage.nameFa})"
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                text = stringResource(R.string.source_mic),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isMic) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isMic) primaryTextColor else secondaryTextColor
                             )
                         }
                     }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = stringResource(R.string.select_language),
-                        tint = Color(0xFF8E8E93)
-                    )
                 }
             }
 
-            // Voice Selector Row
-            Text(
-                text = stringResource(R.string.voice_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF8E8E93),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 6.dp)
-            )
-            VoiceSelectorRow(
-                selectedVoice = uiState.currentSettings.voice,
-                onVoiceSelected = { voice -> viewModel.selectVoice(voice) },
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            // ── THREE SELECTOR CARDS: Language | Voice | Tone ─────────────────
+            val toneShortLabel = when (uiState.currentSettings.dubTone) {
+                com.afrouzi.hamava.data.model.DubTone.COLLOQUIAL -> if (isPersian) "محاوره‌ای" else "Casual"
+                com.afrouzi.hamava.data.model.DubTone.FORMAL -> if (isPersian) "رسمی" else "Formal"
+                com.afrouzi.hamava.data.model.DubTone.TECHNICAL -> if (isPersian) "تخصصی" else "Technical"
+            }
 
-            // Dub Tone Selector Chips
-            Text(
-                text = stringResource(R.string.dub_tone_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF8E8E93),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 6.dp)
-            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 14.dp),
+                    .padding(bottom = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                DubTone.entries.forEach { tone ->
-                    FilterChip(
-                        selected = uiState.currentSettings.dubTone == tone,
-                        onClick = { viewModel.selectDubTone(tone) },
-                        label = { Text(if (isPersian) tone.titleFa else tone.titleEn, fontSize = 11.5.sp) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = PrimaryPurple.copy(alpha = 0.35f),
-                            selectedLabelColor = Color.White,
-                            containerColor = IosControlBg,
-                            labelColor = Color(0xFF8E8E93)
-                        )
-                    )
-                }
+                // Language selector card
+                SelectorCard(
+                    modifier = Modifier.weight(1f),
+                    label = if (isPersian) "زبان" else "Language",
+                    value = uiState.currentSettings.targetLanguage.flag + " " +
+                            (if (isPersian) uiState.currentSettings.targetLanguage.nameFa
+                             else uiState.currentSettings.targetLanguage.nameEn),
+                    onClick = { showLanguageSheet = true },
+                    containerColor = cardBg,
+                    borderColor = borderColor,
+                    labelColor = secondaryTextColor,
+                    valueColor = primaryTextColor
+                )
+                // Voice selector card
+                SelectorCard(
+                    modifier = Modifier.weight(1f),
+                    label = if (isPersian) "صدا" else "Voice",
+                    value = if (isPersian) uiState.currentSettings.voice.nameFa
+                            else uiState.currentSettings.voice.displayName,
+                    onClick = { showVoiceSheet = true },
+                    containerColor = cardBg,
+                    borderColor = borderColor,
+                    labelColor = secondaryTextColor,
+                    valueColor = primaryTextColor
+                )
+                // Tone selector card
+                SelectorCard(
+                    modifier = Modifier.weight(1f),
+                    label = if (isPersian) "لحن" else "Tone",
+                    value = toneShortLabel,
+                    onClick = { showToneSheet = true },
+                    containerColor = cardBg,
+                    borderColor = borderColor,
+                    labelColor = secondaryTextColor,
+                    valueColor = primaryTextColor
+                )
             }
 
             // Audio Waveform Visualizer
@@ -568,8 +572,8 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = IosCardBg),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(IosBorder))
+                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(borderColor))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -600,7 +604,7 @@ fun HomeScreen(
                         Text(
                             text = if (uiState.subtitle.isNotBlank()) uiState.subtitle else (if (isPersian) "در انتظار شنیدن و ترجمه گفتار…" else "Listening for speech to translate…"),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White
+                            color = primaryTextColor
                         )
                     }
                 }
@@ -681,8 +685,8 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = IosCardBg),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(IosBorder))
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(borderColor))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -695,13 +699,13 @@ fun HomeScreen(
                                 text = stringResource(R.string.original_volume_label),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White
+                                color = primaryTextColor
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = stringResource(R.string.original_volume_desc),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF8E8E93),
+                                color = secondaryTextColor,
                                 fontSize = 10.5.sp
                             )
                         }
@@ -722,7 +726,7 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.VolumeDown,
                             contentDescription = null,
-                            tint = Color(0xFF8E8E93),
+                            tint = secondaryTextColor,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -734,7 +738,7 @@ fun HomeScreen(
                             colors = SliderDefaults.colors(
                                 thumbColor = IosBlue,
                                 activeTrackColor = IosBlue,
-                                inactiveTrackColor = IosControlBg
+                                inactiveTrackColor = controlBg
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -756,6 +760,66 @@ fun HomeScreen(
                 latencyMs = uiState.latencyMs,
                 settings = uiState.currentSettings,
                 modifier = Modifier.padding(bottom = 24.dp)
+            )
+        }
+    }
+}
+
+// ── Reusable Selector Card ─────────────────────────────────────────────────────
+@Composable
+private fun SelectorCard(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = Color(0xFF1C1C1E),
+    borderColor: Color = Color(0xFF38383A),
+    labelColor: Color = Color(0xFF8E8E93),
+    valueColor: Color = Color.White
+) {
+    Card(
+        modifier = modifier
+            .height(64.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(borderColor))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = labelColor,
+                    fontSize = 11.sp,
+                    maxLines = 1
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = labelColor,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = valueColor,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

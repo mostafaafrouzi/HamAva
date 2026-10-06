@@ -59,7 +59,7 @@ Built to overcome the limitations of proprietary tools like Livdub, HamAva requi
 
 | Platform | Link | Status |
 | :--- | :--- | :--- |
-| **GitHub Releases** | [Download APK / AAB](https://github.com/mostafaafrouzi/HamAva/releases/latest) | ✅ v1.3.0 Available |
+| **GitHub Releases** | [Download APK / AAB](https://github.com/mostafaafrouzi/HamAva/releases/latest) | ✅ v1.4.0 Available |
 | **Cafe Bazaar** | [HamAva on Cafe Bazaar](https://cafebazaar.ir/developer/057657612999?utm_source=github&utm_medium=readme_en&utm_campaign=hamava) | ⏳ Reviewing |
 | **Google Play** | Google Play Store link | ⏳ Coming Soon |
 

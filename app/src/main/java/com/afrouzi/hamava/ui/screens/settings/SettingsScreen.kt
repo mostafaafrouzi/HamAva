@@ -12,6 +12,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,9 +31,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -78,7 +83,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afrouzi.hamava.R
 import com.afrouzi.hamava.data.model.DubTone
 import com.afrouzi.hamava.data.model.GeminiConstants
-import com.afrouzi.hamava.ui.theme.DarkSurface
 import com.afrouzi.hamava.ui.theme.ErrorColor
 import com.afrouzi.hamava.ui.theme.PrimaryPurple
 import com.afrouzi.hamava.ui.theme.SuccessColor
@@ -100,6 +104,7 @@ fun SettingsScreen(
 
     val clipboardManager = LocalClipboardManager.current
     var isPasswordVisible by remember { mutableStateOf(false) }
+    var isFallbackPasswordVisible by remember { mutableStateOf(false) }
     val isPersian = uiState.settings.appLanguage == "fa"
 
     Scaffold(
@@ -147,7 +152,7 @@ fun SettingsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -235,7 +240,7 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Buttons: Test connection & Save
+                    // Buttons: Test & Save (single line)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -247,16 +252,23 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                             enabled = uiState.validationStatus != ValidationStatus.VALIDATING
                         ) {
                             if (uiState.validationStatus == ValidationStatus.VALIDATING) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
                                     color = TealActive
                                 )
                             } else {
-                                Text(stringResource(R.string.test_connection))
+                                Text(
+                                    text = stringResource(R.string.test_connection),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
 
@@ -270,9 +282,17 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
                         ) {
-                            Text(stringResource(R.string.save_settings), color = Color.White)
+                            Text(
+                                text = stringResource(R.string.save_settings),
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
 
@@ -332,7 +352,7 @@ fun SettingsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -348,22 +368,135 @@ fun SettingsScreen(
                         onValueChange = { viewModel.onFallbackKeysChanged(it) },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text(stringResource(R.string.fallback_keys_hint)) },
-                        maxLines = 3,
+                        maxLines = 4,
+                        visualTransformation = if (isFallbackPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = {
+                                    clipboardManager.getText()?.text?.let { clipText ->
+                                        if (clipText.isNotBlank()) {
+                                            val current = uiState.fallbackKeysInput
+                                            val newVal = if (current.isBlank()) clipText.trim()
+                                                         else "$current\n${clipText.trim()}"
+                                            viewModel.onFallbackKeysChanged(newVal)
+                                        }
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentPaste,
+                                        contentDescription = stringResource(R.string.paste_key),
+                                        tint = TealActive
+                                    )
+                                }
+                                IconButton(onClick = { isFallbackPasswordVisible = !isFallbackPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (isFallbackPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = {
-                            viewModel.saveFallbackKeys()
-                            scope.launch {
-                                snackbarHostState.showSnackbar(context.getString(R.string.settings_saved))
-                            }
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Buttons: Test & Save (single line)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(stringResource(R.string.save_settings), color = Color.White)
+                        OutlinedButton(
+                            onClick = {
+                                keyboardController?.hide()
+                                viewModel.testFallbackKeys()
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                            enabled = uiState.fallbackValidationStatus != ValidationStatus.VALIDATING
+                        ) {
+                            if (uiState.fallbackValidationStatus == ValidationStatus.VALIDATING) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = TealActive
+                                )
+                            } else {
+                                Text(
+                                    text = stringResource(R.string.test_connection),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                keyboardController?.hide()
+                                viewModel.saveFallbackKeys()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(context.getString(R.string.settings_saved))
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.save_settings),
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Fallback Validation Status feedback
+                    AnimatedVisibility(visible = uiState.fallbackValidationStatus == ValidationStatus.SUCCESS) {
+                        Row(
+                            modifier = Modifier.padding(top = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = SuccessColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (uiState.fallbackValidationMessage.isNotBlank()) uiState.fallbackValidationMessage else stringResource(R.string.connection_success),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = SuccessColor
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(visible = uiState.fallbackValidationStatus == ValidationStatus.FAILED) {
+                        Row(
+                            modifier = Modifier.padding(top = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = null,
+                                tint = ErrorColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (uiState.fallbackValidationMessage.isNotBlank()) uiState.fallbackValidationMessage else stringResource(R.string.connection_failed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ErrorColor
+                            )
+                        }
                     }
                 }
             }
@@ -381,7 +514,7 @@ fun SettingsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -496,7 +629,7 @@ fun SettingsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -591,7 +724,7 @@ fun SettingsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -675,7 +808,7 @@ fun SettingsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
@@ -724,12 +857,60 @@ fun SettingsScreen(
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 32.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // Theme toggle
+                    Text(
+                        text = stringResource(R.string.theme_title),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            Triple("system", stringResource(R.string.theme_system), Icons.Default.PhoneAndroid),
+                            Triple("dark", stringResource(R.string.theme_dark), Icons.Default.DarkMode),
+                            Triple("light", stringResource(R.string.theme_light), Icons.Default.LightMode)
+                        ).forEach { (themeKey, themeLabel, themeIcon) ->
+                            val isSelected = uiState.settings.appTheme == themeKey
+                            OutlinedButton(
+                                onClick = { viewModel.selectAppTheme(themeKey) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                                colors = if (isSelected)
+                                    ButtonDefaults.outlinedButtonColors(containerColor = TealActive.copy(alpha = 0.2f))
+                                else ButtonDefaults.outlinedButtonColors()
+                            ) {
+                                Icon(
+                                    imageVector = themeIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = if (isSelected) TealActive else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = themeLabel,
+                                    maxLines = 1,
+                                    fontSize = 11.sp,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = if (isSelected) TealActive else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Language selector
                     Text(
                         text = stringResource(R.string.app_language_title),
                         style = MaterialTheme.typography.labelLarge,

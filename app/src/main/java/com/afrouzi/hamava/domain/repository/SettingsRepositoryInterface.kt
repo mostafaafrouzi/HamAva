@@ -33,4 +33,6 @@ interface SettingsRepositoryInterface {
     suspend fun updateEnableAec(enable: Boolean)
     suspend fun updateSilenceSuppression(enable: Boolean)
     suspend fun updateProxySettings(type: String, host: String, port: Int)
+    fun hasSeenTour(): Boolean
+    fun markTourCompleted()
 }

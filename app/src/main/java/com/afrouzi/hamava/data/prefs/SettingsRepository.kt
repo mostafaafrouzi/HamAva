@@ -89,7 +89,7 @@ class SettingsRepository @Inject constructor(
         } else {
             savedModel
         }
-        val audioSourceStr = generalPrefs.getString(KEY_AUDIO_SOURCE, AudioSourceType.MIC.name) ?: AudioSourceType.MIC.name
+        val audioSourceStr = generalPrefs.getString(KEY_AUDIO_SOURCE, AudioSourceType.SYSTEM.name) ?: AudioSourceType.SYSTEM.name
         val appTheme = generalPrefs.getString(KEY_APP_THEME, "dark") ?: "dark"
         val appLang = generalPrefs.getString(KEY_APP_LANG, "fa") ?: "fa"
         val dubVolume = generalPrefs.getFloat(KEY_DUB_VOLUME, 1.0f)
@@ -107,7 +107,7 @@ class SettingsRepository @Inject constructor(
         val audioSource = try {
             AudioSourceType.valueOf(audioSourceStr)
         } catch (e: Exception) {
-            AudioSourceType.MIC
+            AudioSourceType.SYSTEM
         }
 
         return DubSettings(
@@ -230,6 +230,12 @@ class SettingsRepository @Inject constructor(
         _settingsFlow.value = _settingsFlow.value.copy(lowLatencyMode = enable)
     }
 
+    override fun hasSeenTour(): Boolean = generalPrefs.getBoolean(KEY_HAS_SEEN_TOUR, false)
+
+    override fun markTourCompleted() {
+        generalPrefs.edit().putBoolean(KEY_HAS_SEEN_TOUR, true).apply()
+    }
+
     companion object {
         private const val KEY_API_KEY = "gemini_api_key"
         private const val KEY_FALLBACK_KEYS = "gemini_fallback_keys"
@@ -250,5 +256,6 @@ class SettingsRepository @Inject constructor(
         private const val KEY_PROXY_TYPE = "proxy_type"
         private const val KEY_PROXY_HOST = "proxy_host"
         private const val KEY_PROXY_PORT = "proxy_port"
+        private const val KEY_HAS_SEEN_TOUR = "has_seen_tour"
     }
 }

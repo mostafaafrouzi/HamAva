@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.afrouzi.hamava.data.model.GeminiVoice
-import com.afrouzi.hamava.ui.theme.DarkSurfaceVariant
 import com.afrouzi.hamava.ui.theme.TealActive
 
 @Composable
@@ -56,7 +55,7 @@ fun VoiceSelectorRow(
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = TealActive.copy(alpha = 0.2f),
                     selectedLabelColor = TealActive,
-                    containerColor = DarkSurfaceVariant,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 border = FilterChipDefaults.filterChipBorder(

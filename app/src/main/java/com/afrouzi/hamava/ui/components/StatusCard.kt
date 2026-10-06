@@ -43,7 +43,6 @@ import com.afrouzi.hamava.R
 import com.afrouzi.hamava.data.model.AudioSourceType
 import com.afrouzi.hamava.data.model.DubSettings
 import com.afrouzi.hamava.data.model.DubStatus
-import com.afrouzi.hamava.ui.theme.DarkSurfaceVariant
 import com.afrouzi.hamava.ui.theme.ErrorColor
 import com.afrouzi.hamava.ui.theme.PrimaryPurple
 import com.afrouzi.hamava.ui.theme.TealActive
@@ -79,7 +78,7 @@ fun StatusCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = DarkSurfaceVariant.copy(alpha = 0.7f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(

@@ -36,7 +36,9 @@ data class SettingsUiState(
     val proxyHostInput: String = "",
     val proxyPortInput: String = "",
     val validationStatus: ValidationStatus = ValidationStatus.IDLE,
-    val validationMessage: String = ""
+    val validationMessage: String = "",
+    val fallbackValidationStatus: ValidationStatus = ValidationStatus.IDLE,
+    val fallbackValidationMessage: String = ""
 )
 
 @HiltViewModel
@@ -76,7 +78,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onFallbackKeysChanged(text: String) {
-        _uiState.update { it.copy(fallbackKeysInput = text) }
+        _uiState.update {
+            it.copy(
+                fallbackKeysInput = text,
+                fallbackValidationStatus = ValidationStatus.IDLE,
+                fallbackValidationMessage = ""
+            )
+        }
     }
 
     fun onProxyHostChanged(host: String) {
@@ -199,6 +207,49 @@ class SettingsViewModel @Inject constructor(
                             validationMessage = "Network error: ${result.error}"
                         )
                     }
+                }
+            }
+        }
+    }
+
+    fun testFallbackKeys() {
+        val keys = _uiState.value.fallbackKeysInput
+            .split("\n", ",")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        if (keys.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    fallbackValidationStatus = ValidationStatus.FAILED,
+                    fallbackValidationMessage = "هیچ کلید پشتیبانی وارد نشده است"
+                )
+            }
+            return
+        }
+
+        _uiState.update { it.copy(fallbackValidationStatus = ValidationStatus.VALIDATING) }
+
+        viewModelScope.launch {
+            var validCount = 0
+            for (key in keys) {
+                if (validateApiKeyUseCase(key) is ApiKeyValidationResult.Valid) {
+                    validCount++
+                }
+            }
+            if (validCount > 0) {
+                settingsRepository.updateFallbackApiKeys(keys)
+                _uiState.update {
+                    it.copy(
+                        fallbackValidationStatus = ValidationStatus.SUCCESS,
+                        fallbackValidationMessage = "$validCount کلید پشتیبان معتبر است"
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        fallbackValidationStatus = ValidationStatus.FAILED,
+                        fallbackValidationMessage = "هیچ‌کدام از کلیدها معتبر نیستند"
+                    )
                 }
             }
         }

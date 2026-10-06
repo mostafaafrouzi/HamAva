@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme = when (settings.appTheme) {
                 "light" -> false
                 "dark" -> true
+                "system" -> isSystemInDarkTheme()
                 else -> true // Dark default
             }
 

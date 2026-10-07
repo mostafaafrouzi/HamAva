@@ -93,9 +93,9 @@
     <!-- Appearance -->
     <string name="appearance_title">Appearance &amp; Language</string>
     <string name="theme_title">Theme</string>
-    <string name="theme_dark">Dark (Default)</string>
+    <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>
-    <string name="theme_system">System</string>
+    <string name="theme_system">System Default</string>
     <string name="app_language_title">App Language</string>
     <string name="app_language_fa">فارسی (Persian)</string>
     <string name="app_language_en">English</string>
@@ -120,7 +120,7 @@
     
     <!-- About Screen -->
     <string name="about_title">About HamAva</string>
-    <string name="about_description">HamAva (همآوا) is a free and open-source real-time audio dubbing Android application powered by Google Gemini Live API. Dub microphone or device audio directly into your preferred language with ultra-low latency.</string>
+    <string name="about_description">HamAva (هم‌آوا) is a free and open-source real-time audio dubbing Android application powered by Google Gemini Live API. Dub microphone or device audio directly into your preferred language with ultra-low latency.</string>
     <string name="developer_title">Developer</string>
     <string name="developer_name">Mostafa Afrouzi</string>
     <string name="github_repository">GitHub Repository</string>

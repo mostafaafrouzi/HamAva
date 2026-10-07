@@ -90,7 +90,7 @@ class SettingsRepository @Inject constructor(
             savedModel
         }
         val audioSourceStr = generalPrefs.getString(KEY_AUDIO_SOURCE, AudioSourceType.SYSTEM.name) ?: AudioSourceType.SYSTEM.name
-        val appTheme = generalPrefs.getString(KEY_APP_THEME, "dark") ?: "dark"
+        val appTheme = generalPrefs.getString(KEY_APP_THEME, "system") ?: "system"
         val appLang = generalPrefs.getString(KEY_APP_LANG, "fa") ?: "fa"
         val dubVolume = generalPrefs.getFloat(KEY_DUB_VOLUME, 1.0f)
         val originalVolume = generalPrefs.getFloat(KEY_ORIGINAL_AUDIO_VOLUME, 0.20f)

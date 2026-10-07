@@ -1,132 +1,188 @@
-# همآوا (HamAva) — دوبله زنده صدا در اندروید با هوش مصنوعی
+# هم‌آوا (HamAva)
 
-<div align="center">
+**فارسی** · [English](README.en.md)
 
-![HamAva Logo](app/src/main/res/mipmap-xxxhdpi/ic_launcher.png)
+اپلیکیشن اندروید رایگان، متن‌باز و مدرن برای **دوبله زنده و بلادرنگ صدا با هوش مصنوعی (Google Gemini Live API)** — ترجمه و بازتولید گفتاری صدای فیلم‌ها، ویدیوها، پادکست‌ها و مکالمات با صدای طبیعی انسانی.
 
-[![Release](https://img.shields.io/github/v/release/mostafaafrouzi/HamAva?style=for-the-badge&color=6750A4)](https://github.com/mostafaafrouzi/HamAva/releases/latest)
-[![License](https://img.shields.io/badge/License-Apache%202.0-00D4AA?style=for-the-badge)](LICENSE)
-[![Android](https://img.shields.io/badge/Android-10%2B%20(API%2029%2B)-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+<div dir="ltr" align="center">
 
-[English Documentation](README.en.md) | [تغییرات نسخه‌ها](.github/release-notes.md) | [دانلود مستقیم](https://github.com/mostafaafrouzi/HamAva/releases/latest)
+`نسخهٔ ۱.۰.۰` · اندروید ۱۰ (API 29) و بالاتر · کد پکیج: `com.afrouzi.hamava` · مجوز Apache 2.0
 
 </div>
 
 ---
 
-## 📖 درباره برنامه
+## پیش‌نمایش محیط برنامه
 
-**همآوا (HamAva)** یک اپلیکیشن اندروید رایگان، متن‌باز و بسیار سریع است که با استفاده از پروتکل بلادرنگ **Google Gemini Live API (BidiGenerateContent)** صدای میکروفون یا صدای در حال پخش سیستم (ویدیوها، پادکست‌ها، لایوها، بازی‌ها) را به‌صورت همزمان دریافت کرده، پردازش نموده و با صدای طبیعی به زبان مقصد (از جمله فارسی روان) دوبله و پخش می‌کند.
+<div align="center">
 
-این برنامه با الهام از ایده نرم‌افزارهای تجاری مانند Livdub اما با هدف حذف هزینه‌های اشتراک، ارائه سورس‌کد کامل، پشتیبانی بی‌نقص از زبان فارسی، امنیت حداکثری و معماری مدرن بر پایه استانداردهای رسمی گوگل طراحی و پیاده‌سازی شده است.
+| صفحه اصلی (روشن) | انتخاب زبان (Bottom Sheet) | تور راهنمای تعاملی | تنظیمات و کلیدها | صفحه اصلی (تاریک) |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/01_home_screen_light.png" width="180" /> | <img src="docs/screenshots/02_bottom_sheet_languages.png" width="180" /> | <img src="docs/screenshots/03_onboarding_tour.png" width="180" /> | <img src="docs/screenshots/04_settings_screen.png" width="180" /> | <img src="docs/screenshots/06_home_screen_dark.png" width="180" /> |
 
----
-
-## ✨ ویژگی‌های کلیدی
-
-- 🎙️ **دو منبع ورودی صدا:**
-  - **میکروفون (Microphone):** دوبله زنده مکالمات، سخنرانی‌ها و کلاس‌های درسی.
-  - **صدای سیستم (System Audio):** ضبط مستقیم صدای برنامه‌ها، ویدیوها و فیلم‌ها بدون نویز محیطی از طریق `AudioPlaybackCapture` (اندروید 10 به بالا).
-- 🪟 **حباب کنترل شناور با طراحی شیشه‌ای iOS (Floating Bubble Overlay):** مدیریت پیشرفته با دکمه‌های مجزای توقف موقت (Pause) و ادامه (Resume) بدون نیاز به دریافت مجدد مجوز تصویربرداری صفحه، دکمه خروج کامل، و نوار تنظیم صدای ویدیوی اصلی در یوتیوب، تیک‌تاک، اینستاگرام و هر برنامه دیگر با انیمیشن روان جذب به لبه (Snap-to-Edge).
-- 🔊 **تنظیم هوشمند بلندی صدای اصلی و پس‌زمینه (Background Video Volume):** امکان کاهش، محو تدریجی (Audio Ducking) یا قطع کامل صدای زبان اصلی ویدیو (از ۰٪ تا ۱۰۰٪) تا صدای دوبله فارسی با حداکثر وضوح و بدون تداخل شنیده شود.
-- ⚡ **حالت فوق سریع و تأخیر حداقلی (Ultra-Low Latency Mode):** کاهش طول چانک‌ها به ۱۰۰ میلی‌ثانیه، استخر بافر ۳۲۰۰ بایتی، حداقل بافر پخش AudioTrack و پرامپت اختصاصی استریم پیوسته برای ترجمه و دوبله زنده با کمترین تأخیر ممکن.
-- 🎭 **شخصی‌سازی لحن دوبله (Dubbing Tone):** انتخاب ادبیات و لحن گفتار در ۳ حالت کاربردی: محاوره‌ای و عامیانه (فیلم و شبکه‌های اجتماعی)، رسمی و آکادمیک (دوره‌ها و اخبار)، فنی و تخصصی (حفظ اصطلاحات مهندسی).
-- 💬 **زیرنویس زنده همگام (Live Subtitles):** استخراج و نمایش لحظه‌ای متن ترجمه‌شده به موازات پخش صدای دوبله در صفحه اصلی و پنل شناور.
-- 🔄 **چرخش کلیدهای پشتیبان API (Failover):** تعریف چندین کلید اختصاصی و سوئیچ خودکار بدون توقف در صورت مواجهه با خطای سهمیه (429 Too Many Requests).
-- 🛡️ **پروکسی ضدتحریم درون‌برنامه‌ای (SOCKS5 & HTTP Proxy):** اتصال مستقیم وب‌سوکت جمینای به پروکسی‌های محلی (مانند v2ray یا Clash) جهت پایداری ۱۰۰ درصدی در ایران.
-- 🎙️ **حذف اکوی سخت‌افزاری (Hardware AEC) و استخر بافر:** جلوگیری از فیدبک و ضبط مجدد صدای دوبله توسط میکروفون و استخر بافر بازیافتی با صفر تخصیص حافظه اضافه برای حفظ تأخیر زیر ۶۰ میلی‌ثانیه.
-- 🌍 **پشتیبانی از بیش از ۷۰ زبان:** ترجمه و دوبله به زبان‌های فارسی، انگلیسی، عربی، ترکی، آلمانی، فرانسوی، روسی، چینی، ژاپنی و ده‌ها زبان دیگر.
-- 🗣️ **انتخاب صداهای طبیعی هوش مصنوعی:** انتخاب از میان ۶ صدای پیش‌ساخته باکیفیت گوگل شامل Aoede, Charon, Fenrir, Kore, Puck, Zephyr.
-- 🎨 **رابط کاربری فوق‌العاده مدرن با الهام از iOS:**
-  - هدر جزیره پویا (Dynamic Island Capsule) با نشانگرهای زنده و وضعیت تأخیر.
-  - کنترل سگمنتد مدرن سبک iOS (Segmented Control) برای جابجایی بین میکروفون و صدای سیستم.
-  - تم پیش‌فرض تاریک (Dark Theme) با پالت رنگی حرفه‌ای و کارت‌های شیشه‌ای.
-  - پشتیبانی کامل و اصولی از چیدمان راست‌به‌چپ (RTL).
-  - استفاده از فونت اصیل و زیبای **ایران‌سنس ایکس (IranSansX)**.
-  - انیمیشن‌های بصری جذاب و نمایشگر زنده امواج صوتی (Audio Waveform).
-- 🔒 **امنیت و حریم خصوصی مطلق:**
-  - ذخیره‌سازی کلید API اختصاصی شما با الگوریتم **AES-256 GCM** در Android Keystore.
-  - برقراری ارتباط مستقیم با سرورهای گوگل (بدون سرور میانی، بدون رهگیری و تبلیغات).
-- 🎛️ **کاشی‌های تنظیمات سریع (Quick Settings Tiles):** شروع و توقف سریع دوبله از طریق نوار اعلان‌های اندروید برای میکروفون و صدای سیستم.
-- ⚙️ **سرویس پایدار پس‌زمینه (Foreground Service):** حفظ پایداری فرآیند دوبله حتی در زمان خروج از برنامه و قفل بودن صفحه با کنترل‌های اعلان (Pause/Resume/Exit).
+</div>
 
 ---
 
-## 📥 دانلود و نصب
+## چه کاری انجام می‌دهد
 
-| منبع دانلود | لینک | وضعیت |
-| :--- | :--- | :--- |
-| **گیت‌هاب (GitHub Releases)** | [دانلود فایل APK / AAB](https://github.com/mostafaafrouzi/HamAva/releases/latest) | ✅ نسخه ۱.۳.۰ آماده |
-| **کافه‌بازار (Cafe Bazaar)** | [صفحه همآوا در بازار](https://cafebazaar.ir/developer/057657612999?utm_source=github&utm_medium=readme_fa&utm_campaign=hamava) | ⏳ در حال بررسی |
-| **گوگل‌پلی (Google Play)** | صفحه دانلود پلی‌استور | ⏳ به‌زودی |
+### ۱. دوبله زنده صدای داخلی سیستم (فیلم‌ها، ویدیوها و پادکست‌ها)
+بدون نیاز به ضبط با میکروفون و بدون تداخل نویزهای محیطی، «هم‌آوا» از طریق قابلیت استاندارد `AudioPlaybackCapture` در اندروید ۱۰ به بعد، جریان خام صدای برنامه‌های در حال پخش (یوتیوب، اینستاگرام، آپارات، تلگرام و پخش‌کننده‌های ویدیو) را با فرکانس ۱۶ کیلوهرتز دریافت کرده و همزمان با صدای طبیعی هوش مصنوعی به فارسی روان دوبله می‌کند. صدای سیستم به عنوان منبع پیش‌فرض تنظیم شده است تا تنها با یک لمس بتوانید تماشای ویدیوها را آغاز کنید.
+
+### ۲. دوبله همزمان گفتار با میکروفون
+برای جلسات، وبینارها، کلاس‌های درسی و گفتگوهای حضوری، می‌توانید منبع ورودی را روی میکروفون قرار دهید. مجهز بودن به حذف نویز سخت‌افزاری (AEC) و تشخیص سکوت خودکار، مانع از بازگشت صدا یا مصرف بی‌رویه اینترنت و سهمیه API می‌شود.
+
+### ۳. کنترل مستقل بلندی صدای ویدیوی اصلی (Audio Ducking)
+هنگام تماشای فیلم زبان اصلی، شنیدن همزمان دو زبان می‌تواند تمرکز را مختل کند. اسلایدر کنترل بلندی صدای اصلی در هم‌آوا به شما امکان می‌دهد صدای ویدیوی مبدأ را از ۰٪ تا ۱۰۰٪ کم کنید یا به کل ببندید تا صدای گوینده فارسی با شفافیت کامل شنیده شود.
+
+### ۴. شخصی‌سازی زبان، گوینده و لحن ترجمه
+- **زبان مقصد:** پشتیبانی از بیش از ۷۰ زبان زنده دنیا (فارسی، انگلیسی، عربی، ترکی، آلمانی، فرانسوی، اسپانیایی، چینی، روسی و...).
+- **صداهای هوش مصنوعی:** انتخاب از بین ۶ صدای طبیعی و بااحساس گوگل (Aoede, Charon, Fenrir, Kore, Puck, Zephyr).
+- **لحن گفتار (Tone):** انتخاب ادبیات دوبله در ۳ قالب کاربردی:
+  - *محاوره‌ای و عامیانه:* مخصوص فیلم‌ها، شبکه‌های اجتماعی و گفتگوهای روزمره.
+  - *رسمی و اداری:* مخصوص اخبار، مقالات و سمینارهای علمی.
+  - *تخصصی و فنی:* حفظ و ترجمه اصطلاحات دقیق مهندسی و پزشکی.
+
+### ۵. حباب شناور و زیرنویس همزمان (Floating Overlay)
+یک ویجت شناور کاربردی روی تمام برنامه‌ها قرار می‌گیرد که دکمه‌های توقف موقت (Pause)، ادامه (Resume)، بستن کامل و اسلایدر صدا را بدون ترک ویدیوی اصلی در اختیارتان می‌گذارد. همچنین متن زیرنویس زنده همگام با صوت دوبله بر روی صفحه نمایش داده می‌شود.
+
+### ۶. مدیریت کلیدهای پشتیبان API (Fallback Keys)
+برای جلوگیری از توقف دوبله هنگام مواجهه با محدودیت تعداد درخواست (خطای HTTP 429 Too Many Requests)، می‌توانید چندین کلید رایگان Google Gemini وارد کنید. برنامه سلامت کلیدها را با یک دکمه بررسی کرده و در صورت پایان سهمیه یک کلید، بلافاصله و نامحسوس به کلید بعدی سوئیچ می‌کند.
+
+### ۷. پروکسی محلی ضدتحریم (SOCKS5 & HTTP)
+جهت دور زدن اختلالات شبکه یا تحریم‌های گوگل، می‌توانید مستقیماً آدرس پروکسی محلی خود (مانند v2ray یا Clash روی پورت 10808) را در بخش تنظیمات وارد کنید تا اتصال وب‌سوکت با بالاترین پایداری برقرار شود.
+
+### ۸. تم روشن، تاریک و هماهنگ با سیستم
+رابط کاربری مدرن Material 3 به طور پیش‌فرض از تنظیمات سیستم گوشی شما پیروی می‌کند. همچنین یک دکمه تغییر سریع تم در نوار بالای صفحه تعبیه شده است تا در کسری از ثانیه بین حالت شب و روز جابه‌جا شوید.
 
 ---
 
-## 🛠️ پیش‌نیازها
+## تفکیک نسخه‌های کافه بازار و مایکت
 
-1. گوشی یا تبلت دارای **اندروید 10 (API 29)** یا بالاتر.
-2. کلید اختصاصی **Google Gemini API Key** (رایگان از [Google AI Studio](https://aistudio.google.com/apikey)).
-3. اتصال اینترنت پایدار و بدون تحریم (به دلیل محدودیت‌های منطقه‌ای گوگل ممکن است نیاز به ابزارهای عبور از تحریم باشد).
+با توجه به قوانین استورهای ایرانی در خصوص ممنوعیت لینک دادن به مارکت‌های رقیب، هم‌آوا با استفاده از سیستم Gradle Product Flavors در دو نسخه رسمی کاملاً مجزا منتشر می‌شود:
+
+| نسخه | مارکت مقصد | لینک صفحه برنامه‌ها در بخش «درباره» | شناسه پکیج و کلید امضا |
+| :--- | :--- | :--- | :--- |
+| **نسخه کافه بازار** | کافه‌بازار | صفحه توسعه‌دهنده در کافه‌بازار | کاملاً یکسان (`com.afrouzi.hamava`) |
+| **نسخه مایکت** | مایکت | صفحه برنامه‌ها در مایکت | کاملاً یکسان (`com.afrouzi.hamava`) |
+
+هیچ تفاوت کارکردی بین دو نسخه وجود ندارد و کاربران می‌توانند بدون کوچک‌ترین مشکلی برنامه‌های خود را آپدیت کنند.
 
 ---
 
-## 🏗️ معماری نرم‌افزار
+## حریم خصوصی و امنیت
 
-پروژه همآوا بر اساس اصول **Clean Architecture** و الگوی **MVVM** پیاده‌سازی شده است:
+**هم‌آوا هیچ‌گونه سرور میانی ندارد و به هیچ عنوان داده‌های شما را ذخیره نمی‌کند.**
 
-```mermaid
-graph TD
-    UI[Compose UI: HomeScreen / SettingsScreen] --> VM[ViewModels]
-    VM --> UC[UseCases: StartDubbing, StopDubbing, ValidateApiKey]
-    UC --> REPO[SettingsRepository]
-    UC --> SVC[DubForegroundService]
-    SVC --> PIPE[AudioPipeline]
-    PIPE --> CAP[AudioCapture / SystemAudioCapture (16kHz PCM)]
-    PIPE --> WS[GeminiLiveSession (OkHttp WSS)]
-    WS --> PLY[AudioPlayer (AudioTrack 24kHz PCM)]
+- **اتصال مستقیم:** تمامی جریان‌های صوتی مستقیماً از گوشی شما به سرورهای رسمی Gemini Live API گوگل فرستاده می‌شوند.
+- **رمزنگاری در دستگاه:** کلیدهای API با الگوریتم قدرتمند AES-256 GCM و توسط کلیدهای سخت‌افزاری در Keystore دستگاه نگهداری می‌شوند.
+- **بدون تبلیغات و بدون ردیاب:** هیچ SDK تبلیغاتی، رهگیری رفتار کاربر، فایربیس آنالیتیکس یا کتابخانه شخص ثالث غیرمتن‌باز در برنامه استفاده نشده است.
+- **شفافیت کامل:** سورس‌کد به صورت ۱۰۰٪ متن‌باز برای بازبینی همگان در دسترس است.
+
+---
+
+## دریافت برنامه
+
+- **GitHub Releases:** [دانلود آخرین نسخه (APK و AAB)](https://github.com/mostafaafrouzi/HamAva/releases/latest)
+- **کافه‌بازار:** [صفحه هم‌آوا در کافه‌بازار](https://cafebazaar.ir/developer/057657612999?utm_source=github&utm_medium=readme_fa&utm_campaign=hamava)
+- **مایکت:** [صفحه هم‌آوا در مایکت](https://myket.ir/developer/dev-102174?utm_source=github&utm_medium=readme_fa&utm_campaign=hamava)
+
+---
+
+# برای توسعه‌دهندگان
+
+## فناوری‌ها
+
+Kotlin · Jetpack Compose · Material 3 · Hilt · Coroutines & Flow · OkHttp (WebSocket) · AudioPlaybackCapture · AudioTrack
+
+<div dir="ltr">
+
+| مؤلفه | مقدار |
+|---|---|
+| Package Name | `com.afrouzi.hamava` |
+| minSdk / targetSdk / compileSdk | 29 / 35 / 35 |
+| AGP / Kotlin | 8.7.3 / 2.0.21 |
+| versionName / versionCode | 1.0.0 / 1 |
+
+</div>
+
+## ساختار پروژه
+
+```
+app/src/main/java/com/afrouzi/hamava/
+├── core/
+│   ├── audio/          مدیریت ضبط سیستم، میکروفون، پخش AudioTrack و پایپ‌لاین صوتی
+│   ├── gemini/         کلاینت WebSocket استریمینگ Gemini Live و پردازش چانک‌ها
+│   └── utils/          ابزارهای پردازش صدا و مدیریت مجوزها
+├── data/
+│   ├── model/          مدل‌های تنظیمات (DubSettings)، زبان‌ها و وضعیت‌ها
+│   └── prefs/          ذخیره‌سازی رمزنگاری‌شده تنظیمات با EncryptedSharedPreferences
+├── domain/
+│   ├── repository/     اینترفیس مخزن تنظیمات
+│   └── usecase/        موارد استفاده شروع/توقف دوبله و اعتبارسنجی کلید API
+├── service/            سرویس پیش‌زمینه (Foreground Service) و کاشی‌های تنظیمات سریع (Tiles)
+└── ui/
+    ├── components/     کامپوننت‌های Compose (موج صوتی، دکمه دوبله، باتم‌شیت‌ها، دیالوگ تور)
+    ├── screens/        صفحات اصلی (Home)، تنظیمات (Settings) و درباره (About)
+    └── theme/          سیستم طراحی Material 3، پالت‌های رنگی و تایپوگرافی ایران‌سنس ایکس
 ```
 
-### ساختار پوشه‌بندی:
-- `com.afrouzi.hamava.core`: لایه ضبط، پردازش و پخش صدا (`AudioCapture`, `SystemAudioCapture`, `AudioPlayer`, `AudioPipeline`) و اتصال وب‌سوکت جمینای (`GeminiLiveSession`).
-- `com.afrouzi.hamava.data`: مدل‌های داده و مخازن تنظیمات رمزنگاری‌شده (`SettingsRepository`).
-- `com.afrouzi.hamava.domain`: موارد استفاده (Use Cases) و قراردادها.
-- `com.afrouzi.hamava.service`: سرویس پس‌زمینه و کاشی‌های تنظیمات سریع (`DubForegroundService`, `MicTileService`, `SystemAudioTileService`).
-- `com.afrouzi.hamava.ui`: کامپوننت‌های Compose، صفحه‌ها، تم، رنگ‌ها، و تایپوگرافی ایران‌سنس ایکس.
-
----
-
-## 🚀 راهنمای بیلد و توسعه (Build & Run)
+## ساخت محلی پروژه
 
 ```bash
 # کلون کردن ریپازیتوری
 git clone https://github.com/mostafaafrouzi/HamAva.git
 cd HamAva
 
-# اجرای تست‌های واحد
-./gradlew testDebugUnitTest
+# ساخت بیلد دیباگ کافه بازار
+./gradlew assembleBazaarDebug
 
-# بیلد نسخه دیباگ و نصب روی شبیه‌ساز/گوشی
-./gradlew installDebug
-
-# بیلد نسخه نهایی ریلیز (Signed Release)
-./gradlew assembleRelease bundleRelease
+# ساخت بیلد دیباگ مایکت
+./gradlew assembleMyketDebug
 ```
 
+برای ساخت نسخه امضاشده محلی، فایل `keystore.properties` را در ریشه پروژه قرار دهید:
+
+```properties
+storeFile=keystore/hamava-release.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+geminiApiKey=...
+```
+
+سپس دستورات زیر را اجرا کنید:
+
+```bash
+# ساخت APK و AAB برای کافه بازار
+./gradlew assembleBazaarRelease bundleBazaarRelease
+
+# ساخت APK و AAB برای مایکت
+./gradlew assembleMyketRelease bundleMyketRelease
+```
+
+## انتشار خودکار با GitHub Actions
+
+ورک‌فلو `.github/workflows/release.yml` با پوش شدن هر تگ نسخه (مانند `v1.0.0`) فعال شده و اقدامات زیر را خودکار انجام می‌دهد:
+1. کامپایل و اجرای تست‌های واحد.
+2. بیلد هر دو فلیور `bazaar` و `myket` در قالب ۴ فایل خروجی (۲ فایل APK و ۲ فایل AAB).
+3. اعتبارسنجی دقیق امضاها با `apksigner` و `jarsigner`.
+4. آپلود خودکار فایل‌ها در صفحه Releases گیت‌هاب بر اساس متن `.github/release-notes.md`.
+
 ---
 
-## 👨‍💻 نویسنده و توسعه‌دهنده
+## توسعه‌دهنده
 
-**مصطفی افروزی (Mostafa Afrouzi)**
+**مصطفی افروزی**
 
-- 🌐 وبسایت رسمی: [afrouzi.ir](https://afrouzi.ir/?utm_source=github&utm_medium=readme_fa&utm_campaign=hamava)
-- 🐙 گیت‌هاب: [github.com/mostafaafrouzi](https://github.com/mostafaafrouzi)
-- 💼 لینکدین: [linkedin.com/in/mostafaafrouzi](https://linkedin.com/in/mostafaafrouzi)
-- 🛍️ پنل کافه‌بازار: [Mostafa Afrouzi on Cafe Bazaar](https://cafebazaar.ir/developer/057657612999?utm_source=github&utm_medium=readme_fa&utm_campaign=hamava)
+- وب‌سایت: [afrouzi.ir](https://afrouzi.ir/?utm_source=github&utm_medium=readme_fa&utm_campaign=hamava)
+- گیت‌هاب: [github.com/mostafaafrouzi](https://github.com/mostafaafrouzi)
+- لینکدین: [linkedin.com/in/mostafaafrouzi](https://linkedin.com/in/mostafaafrouzi)
+- صفحه برنامه‌ها در کافه بازار: [cafebazaar.ir/developer/057657612999](https://cafebazaar.ir/developer/057657612999)
+- صفحه برنامه‌ها در مایکت: [myket.ir/developer/dev-102174](https://myket.ir/developer/dev-102174)
 
 ---
 
-## 📄 مجوز انتشار (License)
+## مجوز
 
-این پروژه تحت مجوز بین‌المللی **Apache License 2.0** منتشر شده است. استفاده، مطالعه، ایجاد انشعاب و توسعه آن مطابق شروط این مجوز آزاد است. متن کامل مجوز در فایل [LICENSE](LICENSE) قرار دارد.
+پروژه تحت مجوز [Apache License 2.0](LICENSE) منتشر شده است.

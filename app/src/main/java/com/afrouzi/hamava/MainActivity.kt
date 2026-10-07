@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
                 "light" -> false
                 "dark" -> true
                 "system" -> isSystemInDarkTheme()
-                else -> true // Dark default
+                else -> isSystemInDarkTheme()
             }
 
             val isPersian = settings.appLanguage == "fa"

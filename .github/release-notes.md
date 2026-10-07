@@ -1,58 +1,57 @@
 ## فارسی
 
-**1.4.0** - تور آموزشی درون‌برنامه، صدای سیستم به عنوان منبع پیش‌فرض، تفکیک کامل نسخه‌های کافه بازار و مایکت، تم روز و شب، کارت‌های فشرده و باتم‌شیت‌ها، و بهبودهای جامع UI
+**1.0.0** — اولین انتشار عمومی هم‌آوا (HamAva): دوبله زنده صدا در اندروید با هوش مصنوعی، تفکیک اختصاصی کافه بازار و مایکت، تور آموزشی تعاملی، پشتیبانی کامل از تم روز و شب، و کارت‌های فشرده باتم‌شیت.
 
-**قابلیت‌های جدید و بهبودهای کلیدی:**
+**قابلیت‌های کلیدی نسخه اول:**
+- 🎙️ **دوبله بلادرنگ و فوق‌سریع (Real-Time Live Dubbing):**
+  - دوبله آنی صدای سیستم (ویدیوها، فیلم‌ها، پادکست‌ها) و صدای محیط (میکروفون) بر بستر Google Gemini Live API با پروتکل دوطرفه WebSocket.
 - 🏪 **تفکیک رسمی نسخه‌های کافه بازار و مایکت (Dual Market Builds):**
-  - ساخت دو نسخه کاملاً مجزا و امضا شده برای **کافه بازار** و **مایکت** بدون تداخل لینک‌های مارکت‌های رقیب در صفحه «درباره».
-  - در نسخه کافه بازار: لینک اختصاصی صفحه توسعه‌دهنده در کافه بازار.
-  - در نسخه مایکت: لینک اختصاصی صفحه برنامه‌های توسعه‌دهنده در مایکت.
-  - یکپارچگی ۱۰۰٪ نام پکیج (`com.afrouzi.hamava`)، کلید امضا و کد نسخه.
+  - ساخت دو نسخه مجزا و رسمی برای **کافه بازار** و **مایکت** با رعایت کامل مقررات مارکت‌ها و عدم تداخل لینک‌های فروشگاه‌های رقیب.
+  - یکپارچگی ۱۰۰٪ شناسه پکیج (`com.afrouzi.hamava`)، کلید امضا و کد نسخه.
 - 🎓 **تور راهنمای تعاملی درون‌برنامه (App Product Tour Onboarding):**
-  - تور ۵ مرحله‌ای زیبا و پویا در اولین ورود کاربر جهت معرفی جامع دوبله زنده، صدای سیستم/میکروفون، تنظیمات صدا و لحن، حباب شناور و امنیت حریم خصوصی.
-- 📱 **صدای سیستم به عنوان منبع پیش‌فرض (System Audio as Default):**
-  - قرارگیری صدای سیستم در جایگاه اول و به صورت پیش‌فرض برای تجربه کاربری روان‌تر و شروع سریع دوبله ویدیوها.
-- 🎨 **کارت‌های فشرده تک‌ردیفه و باتم‌شیت‌های شیک (Bottom Sheets):**
-  - قرارگیری کارت‌های «زبان»، «صدا» و «لحن» در یک سطر متقارن و یکسان با باز شدن شیت‌های اختصاصی پایین صفحه.
-- 🌓 **پشتیبانی کامل از تم روشن، تاریک و هماهنگ با سیستم (Dark & Light Mode):**
-  - افزودن دکمه تاگل سریع تم در نوار بالای برنامه و تنظیمات جامع تم با کنتراست بی‌نقص.
-- 🔑 **ارتقای مدیریت کلیدهای پشتیبان API (Fallback Keys):**
-  - تست و بررسی اتصال اختصاصی برای کلیدهای یدکی، دکمه Paste سریع و دکمه نمایش/مخفی‌سازی رمز کلیدها.
-- 📐 **اصلاح چیدمان دکمه‌های صفحه تنظیمات:**
-  - واکنش‌گرایی دکمه‌های «بررسی و تست اتصال» و «ذخیره تنظیمات» در یک خط بدون شکست نامنظم کلمات.
+  - راهنمای ۵ مرحله‌ای تصویری و زیبا در اولین اجرای برنامه جهت آشنایی با امکانات اصلی، منبع ورودی، تنظیمات صدا و لحن و حریم خصوصی.
+- 📱 **صدای سیستم به عنوان منبع پیش‌فرض (System Audio):**
+  - اولویت‌بندی صدای داخلی گوشی به عنوان گزینه پیش‌فرض برای دوبله مستقیم فیلم‌ها و ویدیوها بدون تداخل صدای محیطی.
+- 🎨 **رابط کاربری مدرن Material 3 و باتم‌شیت‌ها:**
+  - کارت‌های تک‌ردیفه متقارن برای انتخاب زبان، صدای گوینده و لحن ترجمه به همراه پنل‌های بازشونده شیک (Bottom Sheets).
+- 🌓 **پشتیبانی کامل از حالت تاریک، روشن و هماهنگ با سیستم (Theme Modes):**
+  - پیروی پیش‌فرض از تم سیستم و قابلیت سوییچ سریع تم در نوار بالای برنامه.
+- 🔑 **مدیریت پیشرفته کلیدهای پشتیبان API (Fallback Keys):**
+  - امکان ثبت چندین کلید یدکی Gemini API با قابلیت تست خودکار اتصال، جای‌گذاری سریع و سوییچ خودکار در زمان اتمام سهمیه.
+- 💬 **زیرنویس همزمان و دکمه کنترل شناور (Floating Overlay):**
+  - نمایش دکمه کنترل شناور و متن زیرنویس زنده بر روی سایر برنامه‌ها.
 
 ---
 
 ## English
 
-**1.4.0** - Product Tour Onboarding, System Audio as Default Source, Dedicated Dual Market Builds (Cafe Bazaar & Myket), Dark & Light Theme Modes, Compact Selector Cards with Bottom Sheets, and Responsive UI Enhancements
+**1.0.0** — Initial Public Release of HamAva: AI-Powered Real-Time Live Audio Dubbing on Android, Dedicated Cafe Bazaar & Myket Builds, Interactive Onboarding Tour, Material 3 Theme Modes, and Compact Bottom Sheet Selectors.
 
-**Key Features & Enhancements:**
+**Key Features:**
+- 🎙️ **Ultra-Low Latency Live Dubbing:**
+  - Real-time voice dubbing of internal device audio (videos, streams) and microphone input powered by Google Gemini Live API.
 - 🏪 **Dedicated Dual Market Builds (Cafe Bazaar & Myket):**
-  - Distinct builds for Iranian Android app stores (**Cafe Bazaar** and **Myket**) complying with store-link cross-referencing policies.
-  - Bazaar build features the official Cafe Bazaar developer profile link.
-  - Myket build features the official Myket developer store link.
-  - Identical package ID (`com.afrouzi.hamava`), signing certificate, and versioning.
-- 🎓 **Interactive App Product Tour Onboarding:**
-  - Beautiful 5-step guided onboarding walkthrough explaining core capabilities, controls, and privacy standards.
-- 📱 **System Audio as Default Option:**
-  - Internal System Audio positioned first and enabled by default for immediate video dubbing without friction.
-- 🎨 **Compact Single-Row Selectors & Bottom Sheets:**
-  - Language, Voice, and Tone grouped into equal-width cards opening dedicated bottom sheets.
-- 🌓 **Comprehensive Dark & Light Theme Support:**
-  - Quick theme toggle in top bar and system/dark/light options in appearance settings.
+  - Tailored builds for Iranian Android app stores complying with cross-store linking policies while maintaining an identical package ID (`com.afrouzi.hamava`) and signing key.
+- 🎓 **Interactive Guided Tour Onboarding:**
+  - 5-step intuitive walkthrough welcoming new users and highlighting core features and privacy principles.
+- 📱 **System Audio as Default Input:**
+  - Seamless internal media audio capture enabled by default for frictionless video watching.
+- 🎨 **Material 3 Design & Bottom Sheets:**
+  - Symmetrical single-row selector cards for target language, voice actor, and dubbing tone.
+- 🌓 **Adaptive Light & Dark Theme Support:**
+  - Defaults to system appearance with quick-toggle button in the top bar.
 - 🔑 **Fallback API Keys Management:**
-  - Independent health check test button, paste from clipboard, and show/hide visibility toggle for backup API keys.
-- 📐 **Polished Responsive Buttons:**
-  - Connection test and save buttons aligned symmetrically on a single row across all screen sizes.
+  - Support for multiple fallback API keys with one-click connectivity checks and automatic failover.
+- 💬 **Floating Overlay & Live Subtitles:**
+  - Quick-access overlay widget with real-time transcribed subtitles on top of other applications.
 
 ---
 
 ## Downloads
 
-- **Cafe Bazaar Build**: `hamava-bazaar-v1.4.0.apk` & `.aab`
-- **Myket Build**: `hamava-myket-v1.4.0.apk` & `.aab`
+- **Cafe Bazaar Build**: `hamava-bazaar-v1.0.0.apk` & `.aab`
+- **Myket Build**: `hamava-myket-v1.0.0.apk` & `.aab`
 
-Package: `com.afrouzi.hamava` | Version: `1.4.0` (Code `6`) | Min SDK: `29` | Target SDK: `35`
+Package: `com.afrouzi.hamava` | Version: `1.0.0` (Code `1`) | Min SDK: `29` | Target SDK: `35`
 
 Full documentation: [فارسی](README.md) | [English](README.en.md)

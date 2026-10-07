@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">همآوا</string>
+    <string name="app_name">هم‌آوا</string>
     <string name="app_tagline">دوبله زنده و بی‌درنگ صدا با Gemini Live API</string>
     
     <!-- Navigation -->
@@ -93,9 +93,9 @@
     <!-- Appearance -->
     <string name="appearance_title">ظاهر و زبان برنامه</string>
     <string name="theme_title">حالت نمایشی (تم)</string>
-    <string name="theme_dark">تاریک (پیش‌فرض)</string>
+    <string name="theme_dark">تاریک</string>
     <string name="theme_light">روشن</string>
-    <string name="theme_system">هماهنگ با سیستم</string>
+    <string name="theme_system">هماهنگ با سیستم (پیش‌فرض)</string>
     <string name="app_language_title">زبان رابط کاربری</string>
     <string name="app_language_fa">فارسی (پیش‌فرض)</string>
     <string name="app_language_en">English (انگلیسی)</string>
@@ -119,8 +119,8 @@
     <string name="select_language">انتخاب زبان مقصد</string>
     
     <!-- About Screen -->
-    <string name="about_title">درباره همآوا</string>
-    <string name="about_description">همآوا (HamAva) یک اپلیکیشن رایگان و متن‌باز برای دوبله بلادرنگ صدا در اندروید است که بر بستر Gemini Live API گوگل پیاده‌سازی شده است. همآوا صدای میکروفون یا صدای داخلی برنامه‌ها را به زبان دلخواه شما و با کمترین تأخیر دوبله و پخش می‌کند.</string>
+    <string name="about_title">درباره هم‌آوا</string>
+    <string name="about_description">هم‌آوا (HamAva) یک اپلیکیشن رایگان و متن‌باز برای دوبله بلادرنگ صدا در اندروید است که بر بستر Gemini Live API گوگل پیاده‌سازی شده است. هم‌آوا صدای میکروفون یا صدای داخلی برنامه‌ها را به زبان دلخواه شما و با کمترین تأخیر دوبله و پخش می‌کند.</string>
     <string name="developer_title">توسعه‌دهنده</string>
     <string name="developer_name">مصطفی افروزی</string>
     <string name="github_repository">مخزن گیت‌هاب پروژه</string>
@@ -135,17 +135,17 @@
     <string name="version_format">نسخه %1$s (%2$d)</string>
     
     <!-- Notification & Services -->
-    <string name="notification_channel_name">سرویس دوبله زنده همآوا</string>
+    <string name="notification_channel_name">سرویس دوبله زنده هم‌آوا</string>
     <string name="notification_channel_desc">نمایش وضعیت دوبله فعال در پس‌زمینه</string>
-    <string name="notification_title_active">همآوا در حال دوبله زنده صدا است…</string>
+    <string name="notification_title_active">هم‌آوا در حال دوبله زنده صدا است…</string>
     <string name="notification_text_active">زبان مقصد: %1$s | منبع: %2$s</string>
     <string name="action_stop">توقف</string>
-    <string name="tile_mic_label">دوبله میکروفون همآوا</string>
-    <string name="tile_phone_label">دوبله سیستم همآوا</string>
+    <string name="tile_mic_label">دوبله میکروفون هم‌آوا</string>
+    <string name="tile_phone_label">دوبله سیستم هم‌آوا</string>
     
     <!-- Permissions -->
     <string name="permission_audio_title">مجوز دسترسی به میکروفون</string>
-    <string name="permission_audio_desc">جهت ضبط صدای محیط و گفتار و ترجمه همزمان، همآوا نیازمند دسترسی به میکروفون دستگاه است.</string>
+    <string name="permission_audio_desc">جهت ضبط صدای محیط و گفتار و ترجمه همزمان، هم‌آوا نیازمند دسترسی به میکروفون دستگاه است.</string>
     <string name="grant_permission">اعطای مجوز</string>
     <string name="permission_denied">مجوز صادر نشد. لطفاً در تنظیمات سیستم اجازه دسترسی را فعال فرمایید.</string>
 </resources>

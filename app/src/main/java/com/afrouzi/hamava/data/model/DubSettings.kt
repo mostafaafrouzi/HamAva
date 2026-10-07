@@ -97,7 +97,7 @@ data class DubSettings(
     val voice: GeminiVoice = GeminiVoice.AOEDE,
     val model: String = GeminiConstants.DEFAULT_MODEL,
     val audioSource: AudioSourceType = AudioSourceType.SYSTEM,
-    val appTheme: String = "dark",
+    val appTheme: String = "system",
     val appLanguage: String = "fa",
     val dubVolumeRatio: Float = 1.0f,
     val originalAudioVolume: Float = 0.20f,

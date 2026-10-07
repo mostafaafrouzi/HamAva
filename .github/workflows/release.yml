@@ -68,44 +68,32 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testBazaarDebugUnitTest
 
-      - name: Build Release APK & AAB
-        run: ./gradlew assembleRelease bundleRelease --stacktrace
+      - name: Build Release APK & AAB for Bazaar and Myket
+        run: ./gradlew assembleBazaarRelease assembleMyketRelease bundleBazaarRelease bundleMyketRelease --stacktrace
 
       - name: Locate and Rename Artifacts
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
           mkdir -p release-artifacts
           
-          # Find APK and copy
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          if [ -f "$APK_PATH" ]; then
-            cp "$APK_PATH" "release-artifacts/hamava-v${VERSION}.apk"
-            echo "Renamed APK to release-artifacts/hamava-v${VERSION}.apk"
-          else
-            echo "::error::Release APK not found!"
-            exit 1
-          fi
-
-          # Find AAB and copy
-          AAB_PATH=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
-          if [ -f "$AAB_PATH" ]; then
-            cp "$AAB_PATH" "release-artifacts/hamava-v${VERSION}.aab"
-            echo "Renamed AAB to release-artifacts/hamava-v${VERSION}.aab"
-          else
-            echo "::error::Release AAB not found!"
-            exit 1
-          fi
+          # Copy Bazaar artifacts
+          cp app/build/outputs/apk/bazaar/release/app-bazaar-release.apk "release-artifacts/hamava-bazaar-v${VERSION}.apk"
+          cp app/build/outputs/bundle/bazaarRelease/app-bazaar-release.aab "release-artifacts/hamava-bazaar-v${VERSION}.aab"
+          
+          # Copy Myket artifacts
+          cp app/build/outputs/apk/myket/release/app-myket-release.apk "release-artifacts/hamava-myket-v${VERSION}.apk"
+          cp app/build/outputs/bundle/myketRelease/app-myket-release.aab "release-artifacts/hamava-myket-v${VERSION}.aab"
 
       - name: Verify Signed Artifacts
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
-          APK="release-artifacts/hamava-v${VERSION}.apk"
-          
-          echo "Verifying APK with apksigner..."
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
-          "$APKSIGNER" verify --verbose "$APK"
+          "$APKSIGNER" verify --verbose "release-artifacts/hamava-bazaar-v${VERSION}.apk"
+          "$APKSIGNER" verify --verbose "release-artifacts/hamava-myket-v${VERSION}.apk"
+          jarsigner -verify -verbose -certs "release-artifacts/hamava-bazaar-v${VERSION}.aab"
+          jarsigner -verify -verbose -certs "release-artifacts/hamava-myket-v${VERSION}.aab"
 
       - name: Update GitHub Release
         uses: softprops/action-gh-release@v2
@@ -116,7 +104,9 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release-artifacts/hamava-v${{ steps.get_version.outputs.VERSION }}.apk
-            release-artifacts/hamava-v${{ steps.get_version.outputs.VERSION }}.aab
+            release-artifacts/hamava-bazaar-v${{ steps.get_version.outputs.VERSION }}.apk
+            release-artifacts/hamava-bazaar-v${{ steps.get_version.outputs.VERSION }}.aab
+            release-artifacts/hamava-myket-v${{ steps.get_version.outputs.VERSION }}.apk
+            release-artifacts/hamava-myket-v${{ steps.get_version.outputs.VERSION }}.aab
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,54 +1,58 @@
 ## فارسی
 
-**1.3.0** - قابلیت توقف موقت و ادامه (Pause/Resume) بدون نیاز به مجوز مجدد، کنترل صدای ویدیوی اصلی و پس‌زمینه، حالت فوق سریع (Ultra-Low Latency) و بازطراحی ظاهر برنامه به سبک مدرن iOS
+**1.4.0** - تور آموزشی درون‌برنامه، صدای سیستم به عنوان منبع پیش‌فرض، تفکیک کامل نسخه‌های کافه بازار و مایکت، تم روز و شب، کارت‌های فشرده و باتم‌شیت‌ها، و بهبودهای جامع UI
 
 **قابلیت‌های جدید و بهبودهای کلیدی:**
-- ⏸️ **حالت توقف موقت (Pause) و ادامه (Resume) درون دکمه شناور و نوتیفیکیشن:**
-  - اکنون در دکمه شناور روی برنامه‌ها (یوتیوب، تیک‌تاک، فیلم‌ها و...) می‌توانید هر زمان خواستید دوبله را متوقف (Pause) و بلافاصله ادامه دهید، بدون اینکه سشن بسته شود یا نیاز باشد به برنامه برگردید و دوباره مجوز تصویربرداری کل صفحه (Screen Capture) صادر کنید.
-  - تفکیک کامل میان توقف موقت (Pause) و خروج نهایی (Exit).
-- 🔊 **اصلاح اساسی و معکوس‌سازی تنظیم صدا: کنترل صدای ویدیوی اصلی (پس‌زمینه):**
-  - صدای دوبله فارسی همواره با حداکثر توان و هماهنگ با کلیدهای ولوم گوشی پخش می‌شود.
-  - اسلایدر تنظیم صدا (از ۰٪ تا ۱۰۰٪) برای کنترل بلندی صدای ویدیوی پس‌زمینه (زبان اصلی) طراحی شده است؛ کاربر می‌تواند صدای انگلیسی/اصلی را کم، ملایم یا کاملاً قطع کند تا دوبله فارسی با نهایت شفافیت شنیده شود.
-- ⚡ **حالت فوق سریع و کاهش حداکثری تأخیر (Ultra-Low Latency Mode):**
-  - استفاده از چانک‌های ۱۰۰ میلی‌ثانیه‌ای (۳۲۰۰ بایت در ۱۶ کیلوهرتز).
-  - بهینه‌سازی بافر سخت‌افزاری AudioTrack برای حداقل بافرینگ خروجی.
-  - بهینه‌سازی پرامپت استریم Gemini Live برای ترجمه آنی عبارات بدون انتظار برای جملات طولانی.
-- 🎨 **بازطراحی UI/UX جذاب به سبک مدرن iOS:**
-  - هدر جزیره پویا (Dynamic Island Capsule) در بالای صفحه با انیمیشن زنده وضعیت و نشانگر تأخیر.
-  - کنترل سگمنتد سبک اپل (iOS Segmented Control) برای انتخاب منبع صدا (میکروفون / صدای سیستم).
-  - کارت‌های گلس‌مورفیسم سبک iOS Inset Grouped با کادرهای ظریف و گوشه‌های گرد ۲۲dp.
-  - دکمه‌های کنترل دوگانه (توقف موقت + پایان دوبله) در صفحه اصلی و حباب شناور.
+- 🏪 **تفکیک رسمی نسخه‌های کافه بازار و مایکت (Dual Market Builds):**
+  - ساخت دو نسخه کاملاً مجزا و امضا شده برای **کافه بازار** و **مایکت** بدون تداخل لینک‌های مارکت‌های رقیب در صفحه «درباره».
+  - در نسخه کافه بازار: لینک اختصاصی صفحه توسعه‌دهنده در کافه بازار.
+  - در نسخه مایکت: لینک اختصاصی صفحه برنامه‌های توسعه‌دهنده در مایکت.
+  - یکپارچگی ۱۰۰٪ نام پکیج (`com.afrouzi.hamava`)، کلید امضا و کد نسخه.
+- 🎓 **تور راهنمای تعاملی درون‌برنامه (App Product Tour Onboarding):**
+  - تور ۵ مرحله‌ای زیبا و پویا در اولین ورود کاربر جهت معرفی جامع دوبله زنده، صدای سیستم/میکروفون، تنظیمات صدا و لحن، حباب شناور و امنیت حریم خصوصی.
+- 📱 **صدای سیستم به عنوان منبع پیش‌فرض (System Audio as Default):**
+  - قرارگیری صدای سیستم در جایگاه اول و به صورت پیش‌فرض برای تجربه کاربری روان‌تر و شروع سریع دوبله ویدیوها.
+- 🎨 **کارت‌های فشرده تک‌ردیفه و باتم‌شیت‌های شیک (Bottom Sheets):**
+  - قرارگیری کارت‌های «زبان»، «صدا» و «لحن» در یک سطر متقارن و یکسان با باز شدن شیت‌های اختصاصی پایین صفحه.
+- 🌓 **پشتیبانی کامل از تم روشن، تاریک و هماهنگ با سیستم (Dark & Light Mode):**
+  - افزودن دکمه تاگل سریع تم در نوار بالای برنامه و تنظیمات جامع تم با کنتراست بی‌نقص.
+- 🔑 **ارتقای مدیریت کلیدهای پشتیبان API (Fallback Keys):**
+  - تست و بررسی اتصال اختصاصی برای کلیدهای یدکی، دکمه Paste سریع و دکمه نمایش/مخفی‌سازی رمز کلیدها.
+- 📐 **اصلاح چیدمان دکمه‌های صفحه تنظیمات:**
+  - واکنش‌گرایی دکمه‌های «بررسی و تست اتصال» و «ذخیره تنظیمات» در یک خط بدون شکست نامنظم کلمات.
 
 ---
 
 ## English
 
-**1.3.0** - In-Place Pause & Resume without Screen Capture Re-prompts, Background Video Volume Control, Ultra-Low Latency Mode & iOS-Inspired UI/UX Redesign
+**1.4.0** - Product Tour Onboarding, System Audio as Default Source, Dedicated Dual Market Builds (Cafe Bazaar & Myket), Dark & Light Theme Modes, Compact Selector Cards with Bottom Sheets, and Responsive UI Enhancements
 
 **Key Features & Enhancements:**
-- ⏸️ **In-Place Pause & Resume in Floating Overlay & Notifications:**
-  - Pause and resume live dubbing seamlessly over third-party apps (YouTube, TikTok, Netflix, etc.) without terminating the MediaProjection session. No more returning to the app or re-prompting for screen capture permissions!
-  - Clear separation between temporary Pause and permanent Exit.
-- 🔊 **Inverted Volume Control: Background / Original Video Audio Level:**
-  - Persian dubbing audio plays at full native media volume.
-  - The volume slider (0% to 100%) now directly modulates the original background foreign video audio (via intelligent AudioFocus ducking and muting), giving the user full control over background sound levels.
-- ⚡ **Ultra-Low Latency Streaming Mode:**
-  - 100ms PCM chunk transmission (3200-byte buffers @ 16kHz).
-  - Minimized AudioTrack hardware buffer for ultra-responsive playback.
-  - Incremental streaming prompt engineering for instantaneous clause-by-clause translation.
-- 🎨 **Sleek iOS-Inspired UI/UX Redesign:**
-  - Dynamic Island status capsule with real-time breathing activity indicators and latency counters.
-  - iOS Segmented Control for switching between Microphone and System Audio modes.
-  - Inset grouped cards with frosted glassmorphic borders and rounded squircles.
-  - Dual playback controls (Pause/Resume + End Session) in both the main screen and floating overlay.
+- 🏪 **Dedicated Dual Market Builds (Cafe Bazaar & Myket):**
+  - Distinct builds for Iranian Android app stores (**Cafe Bazaar** and **Myket**) complying with store-link cross-referencing policies.
+  - Bazaar build features the official Cafe Bazaar developer profile link.
+  - Myket build features the official Myket developer store link.
+  - Identical package ID (`com.afrouzi.hamava`), signing certificate, and versioning.
+- 🎓 **Interactive App Product Tour Onboarding:**
+  - Beautiful 5-step guided onboarding walkthrough explaining core capabilities, controls, and privacy standards.
+- 📱 **System Audio as Default Option:**
+  - Internal System Audio positioned first and enabled by default for immediate video dubbing without friction.
+- 🎨 **Compact Single-Row Selectors & Bottom Sheets:**
+  - Language, Voice, and Tone grouped into equal-width cards opening dedicated bottom sheets.
+- 🌓 **Comprehensive Dark & Light Theme Support:**
+  - Quick theme toggle in top bar and system/dark/light options in appearance settings.
+- 🔑 **Fallback API Keys Management:**
+  - Independent health check test button, paste from clipboard, and show/hide visibility toggle for backup API keys.
+- 📐 **Polished Responsive Buttons:**
+  - Connection test and save buttons aligned symmetrically on a single row across all screen sizes.
 
 ---
 
 ## Downloads
 
-- **APK:** `hamava-v1.3.0.apk` (Direct installation, sideloading, and Cafe Bazaar)
-- **AAB:** `hamava-v1.3.0.aab` (Google Play Store bundle)
+- **Cafe Bazaar Build**: `hamava-bazaar-v1.4.0.apk` & `.aab`
+- **Myket Build**: `hamava-myket-v1.4.0.apk` & `.aab`
 
-Package: `com.afrouzi.hamava` | Version: `1.3.0` (Code `5`) | Min SDK: `29` | Target SDK: `35`
+Package: `com.afrouzi.hamava` | Version: `1.4.0` (Code `6`) | Min SDK: `29` | Target SDK: `35`
 
-Full documentation: [فارسی](README.md) | [English](README.en.md)  
+Full documentation: [فارسی](README.md) | [English](README.en.md)

@@ -28,6 +28,20 @@ android {
         buildConfigField("String", "DEFAULT_GEMINI_API_KEY", "\"$defaultApiKey\"")
     }
 
+    flavorDimensions += "market"
+    productFlavors {
+        create("bazaar") {
+            dimension = "market"
+            buildConfigField("String", "MARKET_NAME", "\"bazaar\"")
+            buildConfigField("String", "DEVELOPER_MARKET_URL", "\"https://cafebazaar.ir/developer/057657612999\"")
+        }
+        create("myket") {
+            dimension = "market"
+            buildConfigField("String", "MARKET_NAME", "\"myket\"")
+            buildConfigField("String", "DEVELOPER_MARKET_URL", "\"https://myket.ir/developer/dev-102174\"")
+        }
+    }
+
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
             create("release") {
@@ -35,6 +49,8 @@ android {
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }

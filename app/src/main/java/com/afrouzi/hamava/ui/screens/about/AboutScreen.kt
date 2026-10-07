@@ -195,12 +195,13 @@ fun AboutScreen(
                         }
                     )
 
+                    val isMyket = BuildConfig.MARKET_NAME == "myket"
                     AboutLinkItem(
                         icon = Icons.Default.Shop,
-                        title = stringResource(R.string.cafebazaar_page),
-                        subtitle = "cafebazaar.ir/developer/057657612999",
+                        title = stringResource(if (isMyket) R.string.myket_page else R.string.cafebazaar_page),
+                        subtitle = if (isMyket) "myket.ir/developer/dev-102174" else "cafebazaar.ir/developer/057657612999",
                         onClick = {
-                            openUrl("https://cafebazaar.ir/developer/057657612999")
+                            openUrl(BuildConfig.DEVELOPER_MARKET_URL)
                         }
                     )
                 }
